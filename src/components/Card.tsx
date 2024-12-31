@@ -1,8 +1,65 @@
-import React from 'react';
 import { Card as CardType } from '../types/game';
 import { Coins, Gauge, Users } from 'lucide-react';
-import { getCardBackground, getCardOverlayColor } from './cardImageUtils';
-import { calculateProductivityRatio, formatProductivityRatio } from './cardUtils';
+import { Player } from '../types/game';
+
+// Combine utility functions into a CardUtils object
+export const CardUtils = {
+  calculateProductivityRatio: (coins: number, productivityCost: number): number => {
+    if (!productivityCost) return 0;
+    return coins / productivityCost;
+  },
+
+  formatProductivityRatio: (ratio: number): string => ratio.toFixed(2),
+
+  verifyCardCount: (player: Player, operation: string): void => {
+    const total = player.deck.length + player.hand.length + 
+                 player.discard.length + player.inPlay.length;
+    
+    const isNewPlayer = total === 8 && 
+                       player.discard.length === 0 && 
+                       player.inPlay.length === 0;
+
+    if (isNewPlayer || operation === 'draw') {
+      if (total !== 8) {
+        console.error(`Card count mismatch! Expected 8, found ${total}`);
+        CardUtils.logCardCounts(player);
+        throw new Error('Card count mismatch');
+      }
+    }
+  },
+
+  logCardCounts: (player: Player): void => {
+    console.log('Card counts:', {
+      deck: player.deck.length,
+      hand: player.hand.length,
+      discard: player.discard.length,
+      inPlay: player.inPlay.length,
+      total: player.deck.length + player.hand.length + 
+             player.discard.length + player.inPlay.length
+    });
+  },
+
+  getCardBackground: (types: CardType[], cardId: string): string => 
+    `/images/cards/${cardId}.png`,
+
+  getCardOverlayColor: (types: CardType[]): string => {
+    const typeColorMap = {
+      treasure: 'from-amber-900/50 to-amber-700/20',
+      family: 'from-emerald-900/50 to-emerald-700/20',
+      action: 'from-purple-900/50 to-purple-700/20'
+    };
+    return types.reduce((color, type) => typeColorMap[type] || color, 'from-gray-900/50 to-gray-700/20');
+  },
+
+  getTypeStyle: (type: string): string => {
+    const styles = {
+      action: 'bg-purple-100 text-purple-700',
+      treasure: 'bg-amber-100 text-amber-700',
+      family: 'bg-green-100 text-green-700'
+    };
+    return styles[type] || 'bg-red-100 text-red-700';
+  }
+};
 
 interface CardProps {
   card: CardType;
@@ -13,17 +70,9 @@ interface CardProps {
 }
 
 export function Card({ card, onClick, count, className = '', disabled }: CardProps) {
-  const getTypeStyle = (type: string) => {
-    switch (type) {
-      case 'action': return 'bg-purple-100 text-purple-700';
-      case 'treasure': return 'bg-amber-100 text-amber-700';
-      case 'family': return 'bg-green-100 text-green-700';
-      default: return 'bg-red-100 text-red-700';
-    }
-  };
-
   const showProductivityCost = card.type.includes('treasure') && card.productivityCost;
-  const productivityRatio = showProductivityCost ? calculateProductivityRatio(card.coins || 0, card.productivityCost || 0) : 0;
+  const productivityRatio = showProductivityCost ? 
+    CardUtils.calculateProductivityRatio(card.coins || 0, card.productivityCost || 0) : 0;
 
   return (
     <div 
@@ -33,13 +82,16 @@ export function Card({ card, onClick, count, className = '', disabled }: CardPro
       } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       {/* Background Image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url('${getCardBackground(card.type)}')` }}
-      />
+      <div className="absolute inset-0 overflow-hidden">
+        <img 
+          src={CardUtils.getCardBackground(card.type, card.id)}
+          alt={card.name}
+          className="w-full h-auto"
+        />
+      </div>
       
       {/* Gradient Overlay */}
-      <div className={`absolute inset-0 bg-gradient-to-b ${getCardOverlayColor(card.type)}`} />
+      <div className={`absolute inset-0 bg-gradient-to-b ${CardUtils.getCardOverlayColor(card.type)}`} />
 
       {/* Top Right Stats */}
       <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
@@ -61,7 +113,7 @@ export function Card({ card, onClick, count, className = '', disabled }: CardPro
         {showProductivityCost && (
           <>
             <div className="px-1.5 py-0.5 bg-black/60 backdrop-blur-sm rounded text-[10px] font-medium text-gray-200 whitespace-nowrap">
-              {formatProductivityRatio(productivityRatio)}x
+              {CardUtils.formatProductivityRatio(productivityRatio)}x
             </div>
             <div className="flex items-center gap-1 px-1.5 py-0.5 bg-black/60 backdrop-blur-sm rounded">
               <Gauge size={12} className="text-gray-300" />
@@ -72,39 +124,41 @@ export function Card({ card, onClick, count, className = '', disabled }: CardPro
       </div>
 
       {/* Card Content */}
-      <div className="relative p-3 h-full flex flex-col">
-        {/* Header */}
-        <div>
-          <h3 className="font-bold text-base text-white truncate">{card.name}</h3>
-          {card.familyName && (
-            <p className="text-sm text-white/80 -mt-0.5">The {card.familyName} Family</p>
+      <div className="relative h-full flex flex-col">
+        {/* Header and Types in the image area */}
+        <div className="p-3">
+          <div>
+            <h3 className="font-bold text-base text-white truncate">{card.name}</h3>
+            {card.familyName && (
+              <p className="text-sm text-white/80 -mt-0.5">The {card.familyName} Family</p>
+            )}
+          </div>
+
+          {/* Card Types */}
+          <div className="flex flex-wrap gap-1 mt-2">
+            {card.type.map(type => (
+              <span 
+                key={type} 
+                className={`text-xs px-2 py-0.5 rounded ${CardUtils.getTypeStyle(type)}`}
+              >
+                {type}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Description and Lore - now full width at bottom */}
+        <div className="mt-auto w-full bg-black/40 p-3 space-y-2">
+          <p className="text-xs leading-tight text-white/90">{card.description}</p>
+          <p className="text-xs leading-tight italic text-white/70">{card.lore}</p>
+
+          {/* Supply Count moved inside description box */}
+          {count !== undefined && (
+            <div className="absolute bottom-2 right-2 text-sm font-medium text-white/90 bg-black/50 px-2 py-0.5 rounded">
+              {count} left
+            </div>
           )}
         </div>
-
-        {/* Card Types */}
-        <div className="flex flex-wrap gap-1 mt-2">
-          {card.type.map(type => (
-            <span 
-              key={type} 
-              className={`text-xs px-2 py-0.5 rounded ${getTypeStyle(type)}`}
-            >
-              {type}
-            </span>
-          ))}
-        </div>
-
-        {/* Description and Lore */}
-        <div className="mt-auto space-y-2 bg-black/40 rounded p-2">
-          <p className="text-sm leading-tight text-white/90">{card.description}</p>
-          <p className="text-sm leading-tight italic text-white/70">{card.lore}</p>
-        </div>
-
-        {/* Supply Count */}
-        {count !== undefined && (
-          <div className="absolute bottom-2 right-2 text-sm font-medium text-white/90 bg-black/50 px-2 py-0.5 rounded">
-            {count} left
-          </div>
-        )}
       </div>
     </div>
   );

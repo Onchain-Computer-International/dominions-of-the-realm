@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card as CardComponent } from './Card';
 import { Card as CardType } from '../types/game';
 
@@ -33,13 +32,20 @@ export function PlayerHand({ cards, onPlayCard, actions, productivityPoints }: P
     const startRotation = -(totalSpread / 2);
     const rotation = startRotation + (index * degreesPerCard);
 
-    // Calculate horizontal position
+    // Calculate horizontal position - UPDATED
     const cardWidth = 144; // Matches w-36 class
     const overlapFactor = 0.7;
     const effectiveCardWidth = cardWidth * overlapFactor;
-    const totalWidth = effectiveCardWidth * (totalCards - 1) + cardWidth;
-    const startX = -totalWidth / 2 + cardWidth / 2;
-    const translateX = startX + (index * effectiveCardWidth);
+    
+    // Calculate the total width and center offset
+    let translateX;
+    if (totalCards === 1) {
+      translateX = 0; // Single card is centered
+    } else {
+      // For multiple cards, calculate position relative to center
+      const centerOffset = ((totalCards - 1) * effectiveCardWidth) / 2;
+      translateX = (index * effectiveCardWidth) - centerOffset;
+    }
 
     // Add a slight vertical offset based on distance from center
     const maxVerticalOffset = 10;
@@ -55,9 +61,9 @@ export function PlayerHand({ cards, onPlayCard, actions, productivityPoints }: P
       {/* Background gradient overlay */}
       <div className="fixed bottom-0 left-0 right-0 h-80 pointer-events-none bg-gradient-to-t from-gray-900/50 to-transparent" />
       
-      {/* Cards container */}
-      <div className="fixed bottom-32 left-1/2 -translate-x-1/2 h-0">
-        <div className="relative">
+      {/* Cards container - UPDATED positioning */}
+      <div className="fixed bottom-32 left-0 right-0 mx-auto w-full">
+        <div className="relative flex justify-center">
           {cards.map((card, index) => (
             <div
               key={index}

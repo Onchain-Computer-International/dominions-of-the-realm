@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 
 interface ToastProps {

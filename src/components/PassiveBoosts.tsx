@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card } from '../types/game';
 import { Gauge, Coins, Swords, ShoppingCart } from 'lucide-react';
 

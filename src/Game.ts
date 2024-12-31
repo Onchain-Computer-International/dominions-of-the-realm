@@ -1,10 +1,10 @@
-
-import { useState, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { nanoid } from 'nanoid';
-import { EffectState } from './types/effects';
 import { Effect } from './types/effects';
 import { GameState, Player, Season } from './types/game';
 import { baseCards } from './Cards';
+import { SEASON_DATA } from './static/Seasons';
+import { shuffleArray } from './utils/UtilityFunctions';
 
 export function processDurationEffect(
   state: GameState,
@@ -35,125 +35,46 @@ export function processDurationEffect(
 }
 
 export function getSeasonalProductivityModifier(season: Season): number {
-  // Each season affects productivity differently
-  switch (season) {
-    case 'spring': 
-      // Spring is good for productivity with mild weather
-      return 1.2;
-    case 'summer':
-      // Summer has long days but heat can be exhausting
-      return 1.0;
-    case 'autumn':
-      // Autumn has moderate weather and harvest season
-      return 1.1;
-    case 'winter':
-      // Winter is harsh and reduces productivity
-      return 0.8;
-  }
+  return SEASON_DATA[season].modifier;
 }
 
 export function getSeasonalDescription(season: Season): string {
-  switch (season) {
-    case 'spring':
-      return 'The mild weather boosts productivity by 20%';
-    case 'summer':
-      return 'Long days maintain normal productivity';
-    case 'autumn':
-      return 'The harvest season increases productivity by 10%';
-    case 'winter':
-      return 'Harsh conditions reduce productivity by 20%';
-  }
+  return SEASON_DATA[season].description;
 }
 
 export function applyCardEffects(state: GameState, player: Player, cardId: string): GameState {
   const playedCard = player.inPlay[player.inPlay.length - 1];
-  if (!playedCard) return state;
+  if (!playedCard?.effects) return state;
 
-  // First apply immediate effects of the played card
-  let newState = state;
-  if (playedCard.effects) {
-    newState = playedCard.effects.reduce((currentState, effect) => {
-      if (effect.type === 'immediate') {
-        return effect.apply(currentState, player);
-      } 
-      
-      if (effect.type === 'duration') {
-        const effectState: EffectState = {
+  return playedCard.effects.reduce((currentState, effect) => {
+    if (effect.type === 'duration') {
+      return {
+        ...currentState,
+        activeEffects: [...currentState.activeEffects, {
           id: nanoid(),
           sourceCard: cardId,
           playerId: player.id,
           remainingDuration: effect.duration || 1,
           effect
-        };
-        
-        return {
-          ...currentState,
-          activeEffects: [...currentState.activeEffects, effectState]
-        };
-      }
-      
-      return currentState;
-    }, state);
-  }
-
-  // Then trigger reaction effects from all cards in play
-  return processReactionEffects(newState, player, playedCard);
-}
-
-function processReactionEffects(state: GameState, player: Player, trigger: Card): GameState {
-  // Get all cards that could have reaction effects
-  const allCards = [
-    ...player.inPlay,
-    ...player.hand,
-    ...player.deck,
-    ...player.discard
-  ];
-
-  // Process reaction effects
-  return allCards.reduce((currentState, card) => {
-    if (!card.effects) return currentState;
-
-    return card.effects.reduce((state, effect) => {
-      if (effect.type === 'reaction' && effect.timing === 'onCardPlay') {
-        if (!effect.condition || effect.condition(state, { card: trigger })) {
-          return effect.apply(state, player, { card: trigger });
-        }
-      }
-      return state;
-    }, currentState);
+        }]
+      };
+    }
+    return effect.type === 'immediate' ? effect.apply(currentState, player) : currentState;
   }, state);
 }
 
 export function processEffects(state: GameState, timing: string): GameState {
-  const { activeEffects, ...restState } = state;
-  const remainingEffects: EffectState[] = [];
-  
-  let newState = { ...restState };
-
-  // Process all active effects
-  activeEffects.forEach(effectState => {
-    if (effectState.effect.timing === timing) {
-      const player = newState.players.find(p => p.id === effectState.playerId);
-      if (player && (!effectState.effect.condition || effectState.effect.condition(newState))) {
-        // Process the duration effect
-        newState = processDurationEffect(newState, player, effectState.effect);
-      }
-      
-      // Keep effect if it's not expired
-      if (effectState.remainingDuration > 1) {
-        remainingEffects.push({
-          ...effectState,
-          remainingDuration: effectState.remainingDuration - 1
-        });
-      }
-    } else {
-      remainingEffects.push(effectState);
-    }
-  });
-
   return {
-    ...newState,
-    activeEffects: remainingEffects
+    ...state,
+    activeEffects: state.activeEffects
+      .filter(effectState => {
+        const player = state.players.find(p => p.id === effectState.playerId);
+        if (effectState.effect.timing === timing && player && 
+            (!effectState.effect.condition || effectState.effect.condition(state))) {
+          state = effectState.effect.apply?.(state, player) ?? state;
+        }
+        return --effectState.remainingDuration > 0;
+      })
   };
 }
 
@@ -203,77 +124,31 @@ export interface PassiveBoost {
   trigger?: string;
 }
 
+export function calculateTotalFamilyMembers(player: Player): number {
+  return [...player.deck, ...player.hand, ...player.discard, ...player.inPlay]
+    .reduce((total, card) => total + (card.headcount || 0), 0);
+}
+
 export function getPassiveBoosts(cards: Card[], handOnly: Card[] = []): PassiveBoost[] {
-  const boosts: PassiveBoost[] = [];
-
-  // Process treasure cards from anywhere
-  cards.forEach(card => {
-    if (card.productivityBonus) {
-      boosts.push({
-        type: 'efficiency',
-        value: card.productivityBonus,
-        source: card.name
-      });
-    }
-  });
-
-  // Process family card effects only from hand
-  handOnly.forEach(card => {
-    if (card.type.includes('family') && card.effects) {
-      card.effects.forEach(effect => {
-        if (effect.type === 'duration' && effect.timing === 'startOfTurn') {
-          const effectStr = effect.apply.toString();
-          
-          if (effectStr.includes('actions')) {
-            boosts.push({
-              type: 'action',
-              value: 1,
-              source: card.name
-            });
-          }
-          
-          if (effectStr.includes('buys')) {
-            boosts.push({
-              type: 'buy',
-              value: 1,
-              source: card.name
-            });
-          }
-        }
-        
-        if (effect.type === 'reaction') {
-          const effectStr = effect.apply.toString();
-          
-          if (effect.timing === 'onCardPlay' && effectStr.includes('coins')) {
-            boosts.push({
-              type: 'coin',
-              value: 1,
-              source: card.name
-            });
-          }
-
-          if (effect.timing === 'whenGained' && effectStr.includes('cards')) {
-            boosts.push({
-              type: 'draw',
-              value: 1,
-              source: card.name,
-              trigger: 'when gaining a Family card'
-            });
-          }
-        }
-      });
-    }
-  });
-
-  return boosts;
+  return [
+    ...cards.map(card => card.productivityBonus && {
+      type: 'efficiency' as BoostType,
+      value: card.productivityBonus,
+      source: card.name
+    }).filter(Boolean),
+    
+    ...handOnly
+      .filter(card => card.type.includes('family'))
+      .flatMap(card => card.passiveBoosts || [])
+  ];
 }
 
 export function createRandomSupply(): Map<string, Card[]> {
   const supply = new Map<string, Card[]>();
   
-  // Select 6 random cards from all available cards
+  // Select 12 random cards from all available cards
   const allCards = [...baseCards];
-  const selectedRandomCards = shuffleArray(allCards).slice(0, 6);
+  const selectedRandomCards = shuffleArray(allCards).slice(0, 12);
   
   // Create supply piles with single copies of each selected card
   selectedRandomCards.forEach(card => {
@@ -287,43 +162,19 @@ export function createRandomSupply(): Map<string, Card[]> {
 export const createInitialSupply = createRandomSupply;
 
 export function getSeasonAndMonth(turn: number): { season: Season; month: number } {
-  const monthsPerSeason = 3;
-  const totalMonthsPerYear = monthsPerSeason * 4;
-  
-  // Convert turn to 0-based month index within the year
-  const monthInYear = (turn - 1) % totalMonthsPerYear;
-  
-  // Calculate season (0-3)
-  const seasonIndex = Math.floor(monthInYear / monthsPerSeason);
   const seasons: Season[] = ['spring', 'summer', 'autumn', 'winter'];
-  
-  // Calculate month within season (1-3)
-  const monthInSeason = (monthInYear % monthsPerSeason) + 1;
-  
   return {
-    season: seasons[seasonIndex],
-    month: monthInSeason
+    season: seasons[Math.floor((turn - 1) / 3) % 4],
+    month: ((turn - 1) % 3) + 1
   };
 }
 
 export function getSeasonEmoji(season: Season): string {
-  switch (season) {
-    case 'spring': return '🌸';
-    case 'summer': return '☀️';
-    case 'autumn': return '🍂';
-    case 'winter': return '❄️';
-  }
+  return SEASON_DATA[season].emoji;
 }
 
 export function getMonthName(season: Season, month: number): string {
-  const months = {
-    spring: ['Early Spring', 'Mid Spring', 'Late Spring'],
-    summer: ['Early Summer', 'Mid Summer', 'Late Summer'],
-    autumn: ['Early Autumn', 'Mid Autumn', 'Late Autumn'],
-    winter: ['Early Winter', 'Mid Winter', 'Late Winter']
-  };
-  
-  return months[season][month - 1];
+  return SEASON_DATA[season].months[month - 1];
 }
 
 // Core game state management
@@ -360,7 +211,7 @@ export function calculateFinalScores(state: GameState): Map<string, number> {
   const scores = new Map<string, number>();
   
   state.players.forEach(player => {
-    const allCards = [...player.deck, ...player.hand, ...player.discard, ...player.inPlay];
+    const allCards = getAllPlayerCards(player);
     let totalPoints = 0;
 
     allCards.forEach(card => {
@@ -421,15 +272,6 @@ export function createInitialDeck(): Card[] {
   ];
 }
 
-export function shuffleArray<T>(array: T[]): T[] {
-  const newArray = [...array];
-  for (let i = newArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-  }
-  return newArray;
-}
-
 export function drawCards(player: Player, count: number): { reshuffled: boolean } {
   let reshuffled = false;
   let remainingToDraw = count;
@@ -469,11 +311,6 @@ export function cleanupPhase(player: Player, season: Season): { reshuffled: bool
 }
 
 // Family and productivity calculations
-export function calculateTotalFamilyMembers(player: Player): number {
-  const allCards = [...player.deck, ...player.hand, ...player.discard, ...player.inPlay];
-  return allCards.reduce((total, card) => total + (card.headcount || 0), 0);
-}
-
 export function calculateEfficiencyMultiplier(player: Player, season: Season): number {
   const baseEfficiency = 0.5;
   const seasonalModifier = getSeasonalProductivityModifier(season);
@@ -494,9 +331,6 @@ export function resetProductivityPoints(player: Player, season: Season): void {
 // Add new function to handle end of turn
 export function endTurn(state: GameState): void {
   const currentPlayer = state.players[state.currentPlayer];
-  
-  // Log to verify this function is being called
-  console.log('Ending turn, randomizing supply...');
   
   cleanupPhase(currentPlayer, state.season);
   
@@ -525,28 +359,20 @@ export function calculateTreasureCoins(player: Player): number {
     .reduce((total, card) => total + (card.coins || 0), 0);
 }
 
-export function calculateMonthlyUpkeep(player: Player): {
-  baseUpkeep: number;
-  modifiedUpkeep: number;
+export function calculateUpkeep(player: Player, spendCoins: boolean = false): {
+  base: number;
+  total: number;
   canAfford: boolean;
 } {
-  const totalFamilyMembers = calculateTotalFamilyMembers(player);
-  const baseUpkeep = totalFamilyMembers;
-  const modifiedUpkeep = Math.ceil(baseUpkeep * 0.5); // Default 0.5x modifier
+  const base = calculateTotalFamilyMembers(player);
+  const total = Math.ceil(base * 0.5);
+  const canAfford = player.coins >= total;
   
-  return {
-    baseUpkeep,
-    modifiedUpkeep,
-    canAfford: player.coins >= modifiedUpkeep
-  };
-}
-
-export function processMonthlyUpkeep(player: Player): {
-  amount: number;
-} {
-  const { modifiedUpkeep } = calculateMonthlyUpkeep(player);
-  spendCoins(player, modifiedUpkeep);
-  return { amount: modifiedUpkeep };
+  if (spendCoins) {
+    player.coins -= total;
+  }
+  
+  return { base, total, canAfford };
 }
 
 // Deep clone a single card
@@ -563,285 +389,107 @@ export function cloneCards(cards: Card[]): Card[] {
   return cards.map(cloneCard);
 }
 
-export function useBuyCard(setGameState: (state: GameState) => void) {
-  return useCallback((cardId: string) => {
-    setGameState(prevState => {
-      const currentPlayer = prevState.players[prevState.currentPlayer];
-      const supplyPile = prevState.supply.get(cardId);
-      
-      if (!supplyPile?.length || 
-          currentPlayer.buys <= 0 ||
-          currentPlayer.coins < supplyPile[0].cost) {
-        return prevState;
-      }
-
-      // Deep clone the bought card
-      const boughtCard = cloneCard(supplyPile[0]);
-      
-      const newSupply = new Map(prevState.supply);
-      newSupply.set(cardId, supplyPile.slice(1));
-
-      const newPlayer = {
-        ...currentPlayer,
-        discard: [...currentPlayer.discard, boughtCard],
-        buys: currentPlayer.buys - 1
-      };
-      
-      spendCoins(newPlayer, boughtCard.cost);
-
-      const newPlayers = [...prevState.players];
-      newPlayers[prevState.currentPlayer] = newPlayer;
-
-      let newState = {
-        ...prevState,
-        players: newPlayers,
-        supply: newSupply
-      };
-
-      if (checkGameEnd(newState)) {
-        newState.gameEnded = true;
-      }
-
-      return newState;
-    });
-  }, []);
-}
-
-export function useEndTurn(setGameState: (state: GameState) => void, onReshuffle: () => void) {
-  return useCallback(() => {
-    setGameState(prevState => {
-      // Get new turn info
-      const newTurn = prevState.turn + 1;
-      const { season, month } = getSeasonAndMonth(newTurn);
-      
-      // Create a deep copy of the state
-      const newState = {
-        ...prevState,
-        turn: newTurn,
-        season,
-        month
-      };
-
-      // Process monthly upkeep
-      const currentPlayer = newState.players[newState.currentPlayer];
-      processMonthlyUpkeep(currentPlayer);
-      
-      // Call our endTurn function which will handle supply randomization
-      endTurn(newState);
-      
-      // Start new turn with proper action handling
-      return startTurnPhase(newState, currentPlayer);
-    });
-  }, [setGameState, onReshuffle]);
-}
-
-export function usePlayCard(setGameState: (state: GameState) => void) {
-  return useCallback((cardIndex: number) => {
-    setGameState(prevState => {
-      const currentPlayer = prevState.players[prevState.currentPlayer];
-      const card = currentPlayer.hand[cardIndex];
-
-      // Check if card can be played
-      if (!card) return prevState;
-      
-      // Prevent family cards from being played
-      if (card.type.includes('family')) return prevState;
-      
-      // Check action requirements
-      if (card.type.includes('action') && currentPlayer.actions <= 0) return prevState;
-      
-      // Check productivity cost for treasure cards
-      if (card.type.includes('treasure')) {
-        const productivityCost = card.productivityCost || 0;
-        if (currentPlayer.productivityPoints < productivityCost) {
-          return prevState;
-        }
-      }
-
-      // Deep clone the card being played
-      const playedCard = cloneCard(card);
-      
-      // Create new arrays to avoid mutations
-      const newHand = [...currentPlayer.hand];
-      newHand.splice(cardIndex, 1);
-
-      const newPlayer = {
-        ...currentPlayer,
-        hand: newHand,
-        inPlay: [...currentPlayer.inPlay, playedCard],
-        actions: card.type.includes('action') 
-          ? (currentPlayer.actions + (card.actions || 0) - 1)
-          : currentPlayer.actions,
-        coins: currentPlayer.coins + (card.coins || 0),
-        buys: currentPlayer.buys + (card.buys || 0),
-        productivityPoints: card.type.includes('treasure')
-          ? currentPlayer.productivityPoints - (card.productivityCost || 0)
-          : currentPlayer.productivityPoints
-      };
-
-      if (card.cards) {
-        drawCards(newPlayer, card.cards);
-      }
-
-      const newPlayers = [...prevState.players];
-      newPlayers[prevState.currentPlayer] = newPlayer;
-
-      let newState = {
-        ...prevState,
-        players: newPlayers
-      };
-
-      return applyCardEffects(newState, newPlayer, playedCard.id);
-    });
-  }, []);
-}
-
-export function useToast() {
-  const [message, setMessage] = useState<string | null>(null);
-
-  const showToast = useCallback((msg: string) => {
-    setMessage(msg);
-  }, []);
-
-  const hideToast = useCallback(() => {
-    setMessage(null);
-  }, []);
-
-  return {
-    message,
-    showToast,
-    hideToast
-  };
-}
-
-interface PendingEffect {
-  card: Card;
-  player: Player;
-  context?: {
-    maxCost?: number;
-    selectedCard?: Card;
-  };
-}
-
-export function useCardEffect(setGameState: (state: GameState) => void) {
-  const [pendingEffect, setPendingEffect] = useState<PendingEffect | null>(null);
-
-  const handleCardEffect = useCallback((card: Card, player: Player) => {
-    switch (card.id) {
-      case 'cellar':
-      case 'chapel':
-      case 'workshop':
-      case 'remodel':
-      case 'mine':
-        setPendingEffect({ card, player });
-        break;
-    }
-  }, []);
-
-  const resolveEffect = useCallback((selectedCards: Card[]) => {
-    if (!pendingEffect) return;
-
-    const { card, player } = pendingEffect;
-
-    setGameState(prevState => {
-      const playerIndex = prevState.players.findIndex(p => p.id === player.id);
-      const newPlayer = { ...player };
-
-      switch (card.id) {
-        case 'cellar': {
-          // Discard selected cards and draw that many
-          selectedCards.forEach(selectedCard => {
-            const cardIndex = newPlayer.hand.findIndex(c => c.id === selectedCard.id);
-            if (cardIndex !== -1) {
-              newPlayer.hand.splice(cardIndex, 1);
-              newPlayer.discard.push(selectedCard);
-            }
-          });
-          
-          // Draw cards equal to number discarded
-          for (let i = 0; i < selectedCards.length; i++) {
-            if (newPlayer.deck.length === 0) {
-              if (newPlayer.discard.length === 0) break;
-              newPlayer.deck = [...newPlayer.discard];
-              newPlayer.discard = [];
-              newPlayer.deck.sort(() => Math.random() - 0.5);
-            }
-            const card = newPlayer.deck.pop();
-            if (card) newPlayer.hand.push(card);
-          }
-          break;
-        }
-
-        case 'chapel': {
-          // Trash up to 4 cards
-          selectedCards.forEach(selectedCard => {
-            const cardIndex = newPlayer.hand.findIndex(c => c.id === selectedCard.id);
-            if (cardIndex !== -1) {
-              newPlayer.hand.splice(cardIndex, 1);
-              prevState.trash.push(selectedCard);
-            }
-          });
-          break;
-        }
-
-        case 'workshop': {
-          // Gain a card costing up to 4
-          if (selectedCards.length === 1 && selectedCards[0].cost <= 4) {
-            const card = selectedCards[0];
-            const pile = prevState.supply.get(card.id);
-            if (pile && pile.length > 0) {
-              newPlayer.discard.push(pile[0]);
-              prevState.supply.set(card.id, pile.slice(1));
-            }
-          }
-          break;
-        }
-
-        case 'remodel':
-        case 'mine': {
-          // Handle two-step effects in the UI
-          break;
-        }
-      }
-
-      const newPlayers = [...prevState.players];
-      newPlayers[playerIndex] = newPlayer;
-
-      return {
-        ...prevState,
-        players: newPlayers
-      };
-    });
-
-    setPendingEffect(null);
-  }, [pendingEffect, setGameState]);
-
-  return {
-    pendingEffect,
-    handleCardEffect,
-    resolveEffect
-  };
-}
-
 export function useGameState() {
-  const [gameState, setGameState] = useState<GameState>(() => 
-    createInitialGameState()
-  );
+  const [state, setState] = useState<GameState>(createInitialGameState);
+  const [toast, setToast] = useState<string | null>(null);
 
-  const { message: toastMessage, showToast, hideToast } = useToast();
+  const actions = useMemo(() => ({
+    playCard: (cardIndex: number) => {
+      setState(prev => {
+        const player = prev.players[prev.currentPlayer];
+        const card = player.hand[cardIndex];
 
-  const playCard = usePlayCard(setGameState);
-  const buyCard = useBuyCard(setGameState);
-  const endTurn = useEndTurn(setGameState, () => showToast('Reshuffling discard pile into deck...'));
-  const cardEffect = useCardEffect(setGameState);
+        // Early returns for invalid plays
+        if (!card || 
+            card.type.includes('family') ||
+            (card.type.includes('action') && player.actions <= 0) ||
+            (card.type.includes('treasure') && player.productivityPoints < (card.productivityCost || 0))) {
+          return prev;
+        }
+
+        // Apply all card effects in a single object update
+        const updatedPlayer = {
+          ...player,
+          hand: player.hand.filter((_, i) => i !== cardIndex),
+          inPlay: [...player.inPlay, card],
+          ...card.type.includes('action') && { 
+            actions: player.actions + (card.actions || 0) - 1,
+            coins: player.coins + (card.coins || 0),
+            buys: player.buys + (card.buys || 0)
+          },
+          ...card.type.includes('treasure') && {
+            productivityPoints: player.productivityPoints - (card.productivityCost || 0),
+            coins: player.coins + (card.coins || 0)
+          }
+        };
+
+        if (card.cards) drawCards(updatedPlayer, card.cards);
+
+        return applyCardEffects(
+          { ...prev, players: prev.players.map((p, i) => i === prev.currentPlayer ? updatedPlayer : p) },
+          updatedPlayer, 
+          card.id
+        );
+      });
+    },
+
+    buyCard: (cardId: string) => {
+      setState(prev => {
+        const player = prev.players[prev.currentPlayer];
+        const supplyPile = prev.supply.get(cardId);
+
+        if (!supplyPile?.length || player.buys <= 0 || player.coins < supplyPile[0].cost) {
+          return prev;
+        }
+
+        const boughtCard = cloneCard(supplyPile[0]);
+        const newSupply = new Map(prev.supply);
+        newSupply.set(cardId, supplyPile.slice(1));
+
+        const newPlayer = {
+          ...player,
+          discard: [...player.discard, boughtCard],
+          buys: player.buys - 1,
+          coins: player.coins - boughtCard.cost
+        };
+
+        const newState = {
+          ...prev,
+          players: prev.players.map((p, i) => i === prev.currentPlayer ? newPlayer : p),
+          supply: newSupply,
+          gameEnded: checkGameEnd({ ...prev, supply: newSupply })
+        };
+
+        return newState;
+      });
+    },
+
+    endTurn: () => {
+      setState(prev => {
+        const newTurn = prev.turn + 1;
+        const { season, month } = getSeasonAndMonth(newTurn);
+        const player = prev.players[prev.currentPlayer];
+
+        calculateUpkeep(player, true);
+        
+        const newState = {
+          ...prev,
+          turn: newTurn,
+          season,
+          month,
+          supply: createRandomSupply()
+        };
+
+        endTurn(newState);
+        return startTurnPhase(newState, player);
+      });
+    }
+  }), []);
 
   return {
-    gameState,
-    playCard,
-    buyCard,
-    endTurn,
-    cardEffect,
-    toastMessage,
-    hideToast
+    gameState: state,
+    ...actions,
+    toastMessage: toast,
+    hideToast: () => setToast(null)
   };
 }

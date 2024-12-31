@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { Book, Trophy, Swords, Coins, ShoppingCart, Users, Gauge, Calendar, Scale } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Swords, Coins, ShoppingCart, Users, Gauge, Calendar, Scale } from 'lucide-react';
 import { Player, Season } from '../types/game';
 import { calculateTotalFamilyMembers, getSeasonEmoji, getMonthName } from '../Game';
 import { calculateEfficiencyMultiplier } from './productivityUtils';
-import { getSeasonalDescription, calculateMonthlyUpkeep } from '../Game';
+import { getSeasonalDescription, calculateUpkeep } from '../Game';
 
 interface GameHeaderProps {
   player: Player;
@@ -83,7 +83,7 @@ export function GameHeader({
 }: GameHeaderProps) {
   const totalPopulation = calculateTotalFamilyMembers(player);
   const efficiency = calculateEfficiencyMultiplier(player, season);
-  const { modifiedUpkeep } = calculateMonthlyUpkeep(player);
+  const { total: upkeepCost } = calculateUpkeep(player);
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md mb-6">
@@ -143,7 +143,7 @@ export function GameHeader({
             <span className="text-sm font-medium">
               Coins: <AnimatedValue value={coins} />
               <span className="text-red-500 ml-1">
-                (-<AnimatedValue value={modifiedUpkeep} />)
+                (-<AnimatedValue value={upkeepCost} />)
               </span>
             </span>
           </div>

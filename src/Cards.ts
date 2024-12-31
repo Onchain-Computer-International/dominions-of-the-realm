@@ -11,19 +11,6 @@ function generateFamilyName(): string {
   return familyNames[nameIndex];
 }
 
-function getFamilyHeadcount(tier: 'shack' | 'hut' | 'cabin' | 'estate' | 'duchy' | 'province'): number {
-  const headcounts = {
-    shack: 2,
-    hut: 4,
-    cabin: 6,
-    estate: 12,
-    duchy: 32,
-    province: 96
-  };
-  
-  return headcounts[tier];
-}
-
 const treasureCards: Card[] = [
   // Basic Mines
   {
@@ -287,7 +274,7 @@ const kingdomCards: Card[] = [
     id: 'laboratory',
     name: 'Laboratory',
     type: ['action'],
-    cost: 5,
+    cost: 14,
     cards: 2,
     actions: 1,
     lore: 'Where alchemists unlock nature\'s secrets.',
@@ -297,7 +284,7 @@ const kingdomCards: Card[] = [
     id: 'festival',
     name: 'Festival',
     type: ['action'],
-    cost: 5,
+    cost: 20,
     actions: 2,
     buys: 1,
     coins: 2,
@@ -305,118 +292,7 @@ const kingdomCards: Card[] = [
     description: '+2 Actions, +1 Buy, +2 Coins'
   },
 
-  // Utility Cards
-  {
-    id: 'cellar',
-    name: 'Cellar',
-    type: ['action'],
-    cost: 2,
-    actions: 1,
-    lore: 'A place to store and sort valuable goods.',
-    description: '+1 Action. Discard any number of cards, then draw that many.',
-    effects: [{
-      type: 'immediate',
-      apply: (state, player) => state // Handled by UI
-    }]
-  },
-  {
-    id: 'chapel',
-    name: 'Chapel',
-    type: ['action'],
-    cost: 2,
-    lore: 'A sacred place for contemplation and sacrifice.',
-    description: 'Trash up to 4 cards from your hand.',
-    effects: [{
-      type: 'immediate',
-      apply: (state, player) => state // Handled by UI
-    }]
-  },
-  {
-    id: 'workshop',
-    name: 'Workshop',
-    type: ['action'],
-    cost: 3,
-    lore: 'Where craftsmen create valuable goods.',
-    description: 'Gain a card costing up to 4 coins.',
-    effects: [{
-      type: 'immediate',
-      apply: (state, player) => state // Handled by UI
-    }]
-  },
-
-  // Attack Cards
-  {
-    id: 'militia',
-    name: 'Militia',
-    type: ['action', 'attack'],
-    cost: 4,
-    coins: 2,
-    lore: 'Armed forces that can disrupt enemy plans.',
-    description: '+2 Coins. Each other player discards down to 3 cards in hand.',
-    effects: [{
-      type: 'immediate',
-      apply: (state, player) => state // Handled by UI
-    }]
-  },
-
-  // Reaction Cards
-  {
-    id: 'moat',
-    name: 'Moat',
-    type: ['action', 'reaction'],
-    cost: 2,
-    cards: 2,
-    lore: 'A defensive barrier against hostile actions.',
-    description: '+2 Cards. When another player plays an Attack card, you may reveal this from your hand to be unaffected by it.',
-    effects: [{
-      type: 'reaction',
-      apply: (state, player) => state // Handled by UI
-    }]
-  },
-
-  // Transformation Cards
-  {
-    id: 'remodel',
-    name: 'Remodel',
-    type: ['action'],
-    cost: 4,
-    lore: 'Transform existing resources into greater value.',
-    description: 'Trash a card from your hand. Gain a card costing up to 2 more than it.',
-    effects: [{
-      type: 'immediate',
-      apply: (state, player) => state // Handled by UI
-    }]
-  },
-  {
-    id: 'mine',
-    name: 'Mine',
-    type: ['action'],
-    cost: 5,
-    lore: 'Upgrade your mining operations.',
-    description: 'You may trash a Treasure from your hand. Gain a Treasure to your hand costing up to 3 more than it.',
-    effects: [{
-      type: 'immediate',
-      apply: (state, player) => state // Handled by UI
-    }]
-  }
 ];
-
-// Card category exports
-export const actionCards = kingdomCards.filter(card => 
-  card.type.includes('action') && !card.type.includes('attack') && !card.type.includes('reaction')
-);
-export const utilityCards = kingdomCards.filter(card => 
-  ['cellar', 'chapel', 'workshop'].includes(card.id)
-);
-export const attackCards = kingdomCards.filter(card => 
-  card.type.includes('attack')
-);
-export const reactionCards = kingdomCards.filter(card => 
-  card.type.includes('reaction')
-);
-export const transformationCards = kingdomCards.filter(card => 
-  ['remodel', 'mine'].includes(card.id)
-);
 
 export const baseCards: Card[] = [
   ...treasureCards,

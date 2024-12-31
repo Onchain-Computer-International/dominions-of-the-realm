@@ -1,6 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card as CardComponent } from './Card';
-import { PassiveBoosts } from './2boosts/PassiveBoosts';
 import { Card as CardType } from '../types/game';
 import { Layers, Hand, Play, Trash, ChevronDown, ChevronUp } from 'lucide-react';
 
