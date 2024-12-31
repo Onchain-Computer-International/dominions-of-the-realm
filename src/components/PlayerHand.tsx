@@ -13,13 +13,13 @@ interface PlayerHandProps {
 }
 
 export function PlayerHand({ cards, onPlayCard, actions, player }: PlayerHandProps) {
-  const [playingCard, setPlayingCard] = useState<number | null>(null);
+  const [playingCards, setPlayingCards] = useState<Set<string>>(new Set());
   const [completedCards, setCompletedCards] = useState<Set<string>>(new Set());
 
   console.log('PlayerHand render:', {
     cards,
     actions,
-    playingCard,
+    playingCards,
     playerPopulation: getCurrentPopulation(player),
     maxPopulation: calculateMaxPopulation(player)
   });
@@ -76,15 +76,20 @@ export function PlayerHand({ cards, onPlayCard, actions, player }: PlayerHandPro
     };
   };
 
-  const handlePlayCard = (index: number, card: CardType) => {
-    if (!canPlayCard(card)) return;
+  const handlePlayCard = (card: CardType) => {
+    if (!canPlayCard(card) || playingCards.has(card.uid)) return;
     
-    setPlayingCard(index);
+    setPlayingCards(prev => new Set([...prev, card.uid]));
+    
     // Delay the actual card play until animation completes
     setTimeout(() => {
-      onPlayCard(index);
-      setPlayingCard(null);
-    }, 600); // Match this with animation duration
+      onPlayCard(card.uid);
+      setPlayingCards(prev => {
+        const next = new Set(prev);
+        next.delete(card.uid);
+        return next;
+      });
+    }, 600);
   };
 
   useEffect(() => {
@@ -102,7 +107,7 @@ export function PlayerHand({ cards, onPlayCard, actions, player }: PlayerHandPro
           <AnimatePresence mode="sync">
             {cards.map((card, index) => {
               const transform = getCardTransform(index, cards.length);
-              const isPlaying = playingCard === index;
+              const isPlaying = playingCards.has(card.uid);
               
               return (
                 <motion.div
@@ -155,7 +160,7 @@ export function PlayerHand({ cards, onPlayCard, actions, player }: PlayerHandPro
                         damping: 30
                       }
                     } : undefined}
-                    onClick={() => handlePlayCard(index, card)}
+                    onClick={() => handlePlayCard(card)}
                     animate={{
                       rotateX: isPlaying ? 45 : 0,
                       scale: isPlaying ? 1.2 : 1,

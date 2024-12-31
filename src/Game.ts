@@ -143,9 +143,10 @@ export function createRandomSupply(): Map<string, Card[]> {
   const allCards = [...baseCards];
   const selectedRandomCards = shuffleArray(allCards).slice(0, 12);
   
-  // Create supply piles with single copies of each selected card
+  // Create supply piles with cloned copies of each selected card
   selectedRandomCards.forEach(card => {
-    supply.set(card.id, [{...card}]);
+    // Create a cloned card with a unique uid
+    supply.set(card.id, [cloneCard(card)]);
   });
 
   return supply;
@@ -334,25 +335,25 @@ export function useGameState() {
   const [toast, setToast] = useState<string | null>(null);
 
   const actions = useMemo(() => ({
-    playCard: (cardIndex: number) => {
+    playCard: (uid: string) => {
       setState(prev => {
         const player = prev.players[prev.currentPlayer];
+        const cardIndex = player.hand.findIndex(card => card.uid === uid);
         const card = player.hand[cardIndex];
 
         // Early returns for invalid plays
-        if (!card || 
+        if (cardIndex === -1 || !card || 
             (card.type.includes('action') && player.actions <= 0)) {
           return prev;
         }
 
-        // Create updated player state
+        // Rest of the playCard logic remains the same
         const updatedPlayer = {
           ...player,
           hand: player.hand.filter((_, i) => i !== cardIndex),
-          inPlay: [...player.inPlay],  // Create new array for inPlay
+          inPlay: [...player.inPlay],
         };
 
-        // Add the card to inPlay with updated headcount if it's a family card
         if (card.type.includes('family')) {
           updatedPlayer.inPlay.push({
             ...card,
@@ -362,7 +363,6 @@ export function useGameState() {
           updatedPlayer.inPlay.push(card);
         }
 
-        // Apply other card effects
         if (card.type.includes('action')) {
           updatedPlayer.actions = player.actions + (card.actions || 0) - 1;
           updatedPlayer.coins = player.coins + (card.coins || 0);
