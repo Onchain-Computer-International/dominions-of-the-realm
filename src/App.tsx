@@ -12,7 +12,6 @@ export default function App() {
     playCard, 
     buyCard, 
     endTurn, 
-    cardEffect,
     toastMessage,
     hideToast
   } = useGameState();
@@ -30,6 +29,7 @@ export default function App() {
           actions={player.actions}
           coins={player.coins}
           buys={player.buys}
+          activeEffects={gameState.activeEffects}
           onEndTurn={endTurn}
         />
 
@@ -52,7 +52,7 @@ export default function App() {
         cards={player.hand}
         onPlayCard={playCard}
         actions={player.actions}
-        productivityPoints={player.productivityPoints}
+        player={player}
       />
 
       {toastMessage && (

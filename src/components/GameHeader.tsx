@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Swords, Coins, ShoppingCart, Users, Gauge, Calendar, Scale } from 'lucide-react';
-import { Player, Season } from '../types/game';
-import { calculateTotalFamilyMembers, getSeasonEmoji, getMonthName } from '../Game';
-import { calculateEfficiencyMultiplier } from './productivityUtils';
-import { getSeasonalDescription, calculateUpkeep } from '../Game';
+import { Swords, Coins, ShoppingCart, Users, Calendar, Sparkles } from 'lucide-react';
+import { Player, Season, ActiveEffect } from '../types/game';
+import { getSeasonEmoji, getMonthName } from '../Game';
+import { getCurrentPopulation, calculateMaxPopulation } from '../Game';
 
 interface GameHeaderProps {
   player: Player;
@@ -13,6 +12,7 @@ interface GameHeaderProps {
   actions: number;
   coins: number;
   buys: number;
+  activeEffects: ActiveEffect[];
   onEndTurn: () => void;
 }
 
@@ -79,12 +79,9 @@ export function GameHeader({
   actions,
   coins,
   buys,
+  activeEffects,
   onEndTurn 
 }: GameHeaderProps) {
-  const totalPopulation = calculateTotalFamilyMembers(player);
-  const efficiency = calculateEfficiencyMultiplier(player, season);
-  const { total: upkeepCost } = calculateUpkeep(player);
-
   return (
     <div className="bg-white p-6 rounded-lg shadow-md mb-6">
       {/* Top Section: Time and Population */}
@@ -100,7 +97,7 @@ export function GameHeader({
           <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-md">
             <Users size={16} className="text-blue-500" />
             <span className="text-sm font-semibold text-blue-700">
-              Population: <AnimatedValue value={totalPopulation} />
+              Population: <AnimatedValue value={getCurrentPopulation(player)} /> / {calculateMaxPopulation(player)}
             </span>
           </div>
         </div>
@@ -111,22 +108,20 @@ export function GameHeader({
         </div>
       </div>
 
-      {/* Middle Section: Efficiency Metrics */}
-      <div className="flex justify-between items-center mb-4 bg-gray-50 p-3 rounded-lg">
-        <div className="flex items-center gap-2">
-          <Gauge size={16} className="text-purple-500" />
-          <span className="text-sm font-medium">
-            Efficiency: <AnimatedValue value={Number(efficiency.toFixed(1))} />x
-            <span className="text-xs text-gray-500 ml-2">
-              ({getSeasonalDescription(season)})
-            </span>
-          </span>
+      {/* Active Effects Section */}
+      {activeEffects.length > 0 && (
+        <div className="flex gap-2 mb-4 pt-2 border-t border-gray-100">
+          {activeEffects.map((effect) => (
+            <div 
+              key={effect.id}
+              className="flex items-center gap-1.5 bg-purple-50 px-2 py-1 rounded text-xs font-medium text-purple-700"
+            >
+              <Sparkles size={12} className="text-purple-500" />
+              {effect.sourceCard}
+            </div>
+          ))}
         </div>
-        <div className="flex items-center gap-2">
-          <Scale size={16} className="text-orange-500" />
-          <span className="text-sm font-medium">Expectations: 0.5x</span>
-        </div>
-      </div>
+      )}
 
       {/* Bottom Section: Resources and Actions */}
       <div className="flex justify-between items-center pt-4 border-t border-gray-100">
@@ -142,9 +137,6 @@ export function GameHeader({
             <Coins size={16} className="text-yellow-500" />
             <span className="text-sm font-medium">
               Coins: <AnimatedValue value={coins} />
-              <span className="text-red-500 ml-1">
-                (-<AnimatedValue value={upkeepCost} />)
-              </span>
             </span>
           </div>
           <div className="flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-md">
@@ -155,23 +147,15 @@ export function GameHeader({
           </div>
         </div>
 
-        {/* End Turn Section */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Gauge size={16} className="text-purple-500" />
-            <span className="text-sm font-medium">
-              Productivity: <AnimatedValue value={player.productivityPoints} />
-            </span>
-          </div>
-          <button
-            onClick={onEndTurn}
-            className="px-6 py-2 bg-blue-500 text-white font-medium rounded-md
-              hover:bg-blue-600 transition-colors shadow-sm
-              active:transform active:scale-95"
-          >
-            End Turn
-          </button>
-        </div>
+        {/* End Turn Button */}
+        <button
+          onClick={onEndTurn}
+          className="px-6 py-2 bg-blue-500 text-white font-medium rounded-md
+            hover:bg-blue-600 transition-colors shadow-sm
+            active:transform active:scale-95"
+        >
+          End Turn
+        </button>
       </div>
     </div>
   );

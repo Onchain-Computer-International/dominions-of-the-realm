@@ -4,13 +4,6 @@ import { Player } from '../types/game';
 
 // Combine utility functions into a CardUtils object
 export const CardUtils = {
-  calculateProductivityRatio: (coins: number, productivityCost: number): number => {
-    if (!productivityCost) return 0;
-    return coins / productivityCost;
-  },
-
-  formatProductivityRatio: (ratio: number): string => ratio.toFixed(2),
-
   verifyCardCount: (player: Player, operation: string): void => {
     const total = player.deck.length + player.hand.length + 
                  player.discard.length + player.inPlay.length;
@@ -55,7 +48,8 @@ export const CardUtils = {
     const styles = {
       action: 'bg-purple-100 text-purple-700',
       treasure: 'bg-amber-100 text-amber-700',
-      family: 'bg-green-100 text-green-700'
+      family: 'bg-green-100 text-green-700',
+      wealth: 'bg-purple-100 text-purple-700'
     };
     return styles[type] || 'bg-red-100 text-red-700';
   }
@@ -70,10 +64,6 @@ interface CardProps {
 }
 
 export function Card({ card, onClick, count, className = '', disabled }: CardProps) {
-  const showProductivityCost = card.type.includes('treasure') && card.productivityCost;
-  const productivityRatio = showProductivityCost ? 
-    CardUtils.calculateProductivityRatio(card.coins || 0, card.productivityCost || 0) : 0;
-
   return (
     <div 
       onClick={disabled ? undefined : onClick}
@@ -100,27 +90,6 @@ export function Card({ card, onClick, count, className = '', disabled }: CardPro
           <Coins size={12} className="text-gray-300" />
           <span className="text-[10px] font-medium text-gray-200">{card.cost}</span>
         </div>
-
-        {/* Population for family cards */}
-        {card.type.includes('family') && card.headcount && (
-          <div className="flex items-center gap-1 px-1.5 py-0.5 bg-black/60 backdrop-blur-sm rounded">
-            <Users size={12} className="text-gray-300" />
-            <span className="text-[10px] font-medium text-gray-200">+{card.headcount}</span>
-          </div>
-        )}
-
-        {/* Productivity stats for treasure cards */}
-        {showProductivityCost && (
-          <>
-            <div className="px-1.5 py-0.5 bg-black/60 backdrop-blur-sm rounded text-[10px] font-medium text-gray-200 whitespace-nowrap">
-              {CardUtils.formatProductivityRatio(productivityRatio)}x
-            </div>
-            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-black/60 backdrop-blur-sm rounded">
-              <Gauge size={12} className="text-gray-300" />
-              <span className="text-[10px] font-medium text-gray-200">{card.productivityCost}</span>
-            </div>
-          </>
-        )}
       </div>
 
       {/* Card Content */}
@@ -145,6 +114,22 @@ export function Card({ card, onClick, count, className = '', disabled }: CardPro
               </span>
             ))}
           </div>
+
+          {/* Coin Value for Treasure Cards */}
+          {card.type.includes('treasure') && card.coins && (
+            <div className="flex items-center gap-1 mt-1 px-2 py-0.5 bg-amber-500/80 rounded w-fit">
+              <Coins size={12} className="text-amber-100" />
+              <span className="text-xs font-medium text-amber-100">+{card.coins}</span>
+            </div>
+          )}
+
+          {/* Population for Family Cards */}
+          {card.type.includes('family') && card.headcount && (
+            <div className="flex items-center gap-1 mt-1 px-2 py-0.5 bg-emerald-500/80 rounded w-fit">
+              <Users size={12} className="text-emerald-100" />
+              <span className="text-xs font-medium text-emerald-100">+{card.born}</span>
+            </div>
+          )}
         </div>
 
         {/* Description and Lore - now full width at bottom */}

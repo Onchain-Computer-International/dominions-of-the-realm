@@ -1,4 +1,5 @@
 import { Card } from './types/game';
+import { drawCards } from './utils/CardUtils';
 
 const familyNames = [
   'Blackwood', 'Ironsmith', 'Thatcher', 'Fletcher', 'Cooper', 'Miller',
@@ -11,7 +12,7 @@ function generateFamilyName(): string {
   return familyNames[nameIndex];
 }
 
-const treasureCards: Card[] = [
+const allCards: Card[] = [
   // Basic Mines
   {
     id: 'copper',
@@ -19,29 +20,26 @@ const treasureCards: Card[] = [
     type: ['treasure'],
     cost: 0,
     coins: 1,
-    productivityCost: 2,
     lore: 'A modest copper vein requiring basic labor to extract.',
-    description: 'Costs 2 productivity to play. Worth 1 coin.'
+    description: 'Worth 1 coin.'
   },
   {
     id: 'silver',
     name: 'Silver Mine',
     type: ['treasure'],
-    cost: 3,
-    coins: 6,
-    productivityCost: 3,
+    cost: 4,
+    coins: 2,
     lore: 'Deep silver deposits that demand skilled miners.',
-    description: 'Costs 3 productivity to play. Worth 2 coins.'
+    description: 'Worth 2 coins.'
   },
   {
     id: 'gold',
     name: 'Gold Mine',
     type: ['treasure'],
-    cost: 6,
-    coins: 12,
-    productivityCost: 4,
+    cost: 8,
+    coins: 3,
     lore: 'Rich gold veins requiring expert extraction.',
-    description: 'Costs 4 productivity to play. Worth 3 coins.'
+    description: 'Worth 3 coins.'
   },
 
   // Nature Mines
@@ -49,42 +47,40 @@ const treasureCards: Card[] = [
     id: 'woods',
     name: 'Woods',
     type: ['treasure'],
-    cost: 2,
-    coins: 1,
-    productivityCost: 1,
+    cost: 3,
+    coins: 2,
     lore: 'A peaceful woodland area rich with natural resources.',
-    description: 'Costs 1 productivity to play. Worth 1 coin.'
+    description: 'Worth 1 coin.'
   },
   {
     id: 'forest',
     name: 'Forest',
     type: ['treasure'],
-    cost: 4,
+    cost: 6,
     coins: 3,
-    productivityCost: 2,
     lore: 'Dense forest teeming with valuable resources.',
-    description: 'Costs 2 productivity to play. Worth 3 coins.'
+    description: 'Worth 3 coins.'
   },
   {
     id: 'groves',
     name: 'Sacred Groves',
     type: ['treasure'],
-    cost: 6,
-    coins: 5,
-    productivityCost: 3,
+    cost: 9,
+    coins: 4,
     lore: 'Ancient groves blessed with abundant natural wealth.',
-    description: 'Costs 3 productivity to play. Worth 5 coins.'
-  }
-];
+    description: 'Worth 5 coins.'
+  },
 
-const lowerTierFamilyCards: Card[] = [
+  // Lower Tier Family Cards
   {
     id: 'shack',
     name: 'Shack',
     familyName: generateFamilyName(),
     type: ['family'],
-    cost: 4,
-    victoryPoints: 0,
+    cost: 6,
+    starterHeadCount: 2,
+    maxHeadCount: 6,
+    born: 1,
     headcount: 2,
     lore: 'A humble family dwelling on the outskirts.',
     description: 'A simple dwelling for a small family.'
@@ -94,22 +90,28 @@ const lowerTierFamilyCards: Card[] = [
     name: 'Hut',
     familyName: generateFamilyName(),
     type: ['family'],
-    cost: 8,
-    victoryPoints: 1,
-    headcount: 4,
+    cost: 12,
+    starterHeadCount: 3,
+    maxHeadCount: 8,
+    born: 1,
+    headcount: 3,
     lore: 'A family of skilled artisans and craftsmen.',
-    description: 'At the start of your turn, you may discard a card for +1 Action.',
+    description: 'At the start of your turn, draw a card.',
     effects: [{
       type: 'duration',
       timing: 'startOfTurn',
-      apply: (state, player) => ({
-        ...state,
-        players: state.players.map(p =>
-          p.id === player.id
-            ? { ...p, actions: p.actions + 1 }
-            : p
-        )
-      })
+      apply: (state, player) => {
+        const playerIndex = state.players.findIndex(p => p.id === player.id);
+        const updatedPlayer = { ...player };
+        drawCards(updatedPlayer, 1);
+        
+        return {
+          ...state,
+          players: state.players.map((p, i) => 
+            i === playerIndex ? updatedPlayer : p
+          )
+        };
+      }
     }]
   },
   {
@@ -118,8 +120,10 @@ const lowerTierFamilyCards: Card[] = [
     familyName: generateFamilyName(),
     type: ['family'],
     cost: 12,
-    victoryPoints: 1,
-    headcount: 6,
+    starterHeadCount: 4,
+    maxHeadCount: 16,
+    born: 2,
+    headcount: 4,
     lore: 'A prosperous merchant family with connections.',
     description: 'When you gain a Family card, draw a card.',
     effects: [{
@@ -135,20 +139,21 @@ const lowerTierFamilyCards: Card[] = [
         )
       })
     }]
-  }
-];
+  },
 
-const standardTierFamilyCards: Card[] = [
+  // Standard Tier Family Cards
   {
     id: 'estate',
     name: 'Estate',
     familyName: generateFamilyName(),
     type: ['family'],
-    cost: 24,
-    victoryPoints: 1,
-    headcount: 12,
+    cost: 30,
+    starterHeadCount: 4,
+    maxHeadCount: 24,
+    born: 2,
+    headcount: 4,
     lore: 'A noble family with ancestral lands.',
-    description: 'Worth 1 VP. When you play a Treasure, gain +1 coin.',
+    description: 'Worth 2 VP. When you play a Treasure, gain +1 coin.',
     effects: [{
       type: 'reaction',
       timing: 'onCardPlay',
@@ -168,11 +173,13 @@ const standardTierFamilyCards: Card[] = [
     name: 'Duchy',
     familyName: generateFamilyName(),
     type: ['family'],
-    cost: 64,
-    victoryPoints: 3,
-    headcount: 32,
+    cost: 80,
+    starterHeadCount: 8,
+    maxHeadCount: 48,
+    born: 3,
+    headcount: 8,
     lore: 'A powerful ducal family commanding respect.',
-    description: 'Worth 3 VP. At the start of your turn, gain +1 Action.',
+    description: 'Worth 4 VP. At the start of your turn, gain +1 Action.',
     effects: [{
       type: 'duration',
       timing: 'startOfTurn',
@@ -191,11 +198,13 @@ const standardTierFamilyCards: Card[] = [
     name: 'Province',
     familyName: generateFamilyName(),
     type: ['family'],
-    cost: 192,
-    victoryPoints: 6,
-    headcount: 96,
+    cost: 160,
+    starterHeadCount: 16,
+    maxHeadCount: 96,
+    born: 4,
+    headcount: 16,
     lore: 'A royal dynasty ruling vast territories.',
-    description: 'Worth 6 VP. At the start of your turn, gain +1 Buy.',
+    description: 'Worth 8 VP. At the start of your turn, gain +1 Buy.',
     effects: [{
       type: 'duration',
       timing: 'startOfTurn',
@@ -208,16 +217,14 @@ const standardTierFamilyCards: Card[] = [
         )
       })
     }]
-  }
-];
+  },
 
-const curseCards: Card[] = [
+  // Curse Cards
   {
     id: 'curse',
     name: 'Curse',
     type: ['curse'],
     cost: 0,
-    victoryPoints: -1,
     lore: 'A family fallen from grace.',
     description: 'Worth -1 VP. When you play an Action, lose 1 Action.',
     effects: [{
@@ -233,27 +240,24 @@ const curseCards: Card[] = [
         )
       })
     }]
-  }
-];
+  },
 
-const kingdomCards: Card[] = [
-  // Action Cards
+  // Kingdom Cards
   {
     id: 'village',
     name: 'Village',
     type: ['action'],
-    cost: 32,
-    productivity: 10,
+    cost: 24,
     actions: 2,
     cards: 1,
     lore: 'A bustling hamlet where workers gather.',
-    description: '+10 Productivity, +2 Actions, +1 Card'
+    description: '+2 Actions, +1 Card'
   },
   {
     id: 'smithy',
     name: 'Smithy',
     type: ['action'],
-    cost: 8,
+    cost: 16,
     cards: 3,
     lore: 'The rhythmic sound of hammers fills the air.',
     description: '+3 Cards'
@@ -262,7 +266,7 @@ const kingdomCards: Card[] = [
     id: 'market',
     name: 'Market',
     type: ['action'],
-    cost: 15,
+    cost: 20,
     cards: 1,
     actions: 1,
     buys: 1,
@@ -274,7 +278,7 @@ const kingdomCards: Card[] = [
     id: 'laboratory',
     name: 'Laboratory',
     type: ['action'],
-    cost: 14,
+    cost: 18,
     cards: 2,
     actions: 1,
     lore: 'Where alchemists unlock nature\'s secrets.',
@@ -284,7 +288,7 @@ const kingdomCards: Card[] = [
     id: 'festival',
     name: 'Festival',
     type: ['action'],
-    cost: 20,
+    cost: 25,
     actions: 2,
     buys: 1,
     coins: 2,
@@ -292,12 +296,85 @@ const kingdomCards: Card[] = [
     description: '+2 Actions, +1 Buy, +2 Coins'
   },
 
+  // Wealth Cards
+  {
+    id: 'merchant_guild',
+    name: 'Guild Charter',
+    type: ['wealth'],
+    cost: 10,
+    coins: 15,
+    lore: 'A coveted membership in the local merchant guild.',
+    description: 'Gain 15 coins. Remove this card from your deck.',
+    effects: [{
+      type: 'immediate',
+      apply: (state, player) => {
+        const playerIndex = state.players.findIndex(p => p.id === player.id);
+        const updatedPlayer = {
+          ...player,
+          coins: player.coins + 15
+        };
+        
+        return {
+          ...state,
+          players: state.players.map((p, i) => 
+            i === playerIndex ? updatedPlayer : p
+          )
+        };
+      }
+    }]
+  },
+  {
+    id: 'wool_trade',
+    name: 'Wool Trade Route',
+    type: ['wealth'],
+    cost: 25,
+    coins: 40,
+    lore: 'Exclusive rights to trade wool with Flemish merchants.',
+    description: 'Gain 40 coins. Remove this card from your deck.',
+    effects: [{
+      type: 'immediate',
+      apply: (state, player) => {
+        const playerIndex = state.players.findIndex(p => p.id === player.id);
+        const updatedPlayer = {
+          ...player,
+          coins: player.coins + 40
+        };
+        
+        return {
+          ...state,
+          players: state.players.map((p, i) => 
+            i === playerIndex ? updatedPlayer : p
+          )
+        };
+      }
+    }]
+  },
+  {
+    id: 'silk_road',
+    name: 'Silk Road Caravan',
+    type: ['wealth'],
+    cost: 50,
+    coins: 85,
+    lore: 'A lucrative trade expedition along the Silk Road.',
+    description: 'Gain 85 coins. Remove this card from your deck.',
+    effects: [{
+      type: 'immediate',
+      apply: (state, player) => {
+        const playerIndex = state.players.findIndex(p => p.id === player.id);
+        const updatedPlayer = {
+          ...player,
+          coins: player.coins + 85
+        };
+        
+        return {
+          ...state,
+          players: state.players.map((p, i) => 
+            i === playerIndex ? updatedPlayer : p
+          )
+        };
+      }
+    }]
+  }
 ];
 
-export const baseCards: Card[] = [
-  ...treasureCards,
-  ...lowerTierFamilyCards,
-  ...standardTierFamilyCards,
-  ...curseCards,
-  ...kingdomCards
-];
+export const baseCards = allCards;

@@ -26,7 +26,6 @@ export function Supply({ supply, onBuyCard, playerCoins, playerBuys }: SupplyPro
             <CardComponent
               key={id}
               card={card}
-              count={pile.length}
               onClick={() => onBuyCard(id)}
               disabled={!canBuy}
             />

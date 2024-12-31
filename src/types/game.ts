@@ -1,36 +1,29 @@
-export type CardType = 'treasure' | 'family' | 'action' | 'duration' | 'reaction' | 'curse';
-export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
+export type CardType = 'action' | 'treasure' | 'family' | 'curse' | 'wealth';
+export type Season = 'spring' | 'summer' | 'fall' | 'winter';
 
 export interface Card {
   id: string;
+  uid?: string;
   name: string;
   familyName?: string;
+  description: string;
+  lore?: string;
   type: CardType[];
   cost: number;
-  victoryPoints?: number | ((player: Player) => number);
-  coins?: number;
-  actions?: number;
-  cards?: number;
-  buys?: number;
   headcount?: number;
-  productivity?: number;
-  productivityBonus?: number;
-  productivityCost?: number;
-  effects?: CardEffect[];
-  lore: string;
-  description: string;
-}
-
-export interface GameState {
-  players: Player[];
-  currentPlayer: number;
-  supply: Map<string, Card[]>;
-  trash: Card[];
-  turn: number;
-  activeEffects: EffectState[];
-  gameEnded: boolean;
-  season: Season;
-  month: number; // 1-3 for each season
+  starterHeadCount?: number;
+  maxHeadCount?: number;
+  born?: number;
+  actions?: number;
+  coins?: number;
+  buys?: number;
+  cards?: number;
+  effects?: Array<{
+    type: 'duration' | 'reaction';
+    timing: 'startOfTurn' | 'onCardPlay' | 'whenGained';
+    condition?: (state: GameState, trigger?: { card?: Card }) => boolean;
+    apply: (state: GameState, player: Player) => GameState;
+  }>;
 }
 
 export interface Player {
@@ -42,6 +35,18 @@ export interface Player {
   actions: number;
   coins: number;
   buys: number;
-  productivityMultiplier: number;
-  productivityPoints: number;
+}
+
+export interface GameState {
+  players: Player[];
+  currentPlayer: number;
+  supply: { [key: string]: number };
+  turn: number;
+  month: number;
+  season: Season;
+}
+
+export interface GameAction {
+  type: string;
+  payload?: any;
 }

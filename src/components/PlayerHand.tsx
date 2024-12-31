@@ -1,28 +1,44 @@
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { Card as CardComponent } from './Card';
 import { Card as CardType } from '../types/game';
+import { Player } from '../types/game';
+import { getCurrentPopulation, calculateMaxPopulation } from '../Game';
 
 interface PlayerHandProps {
   cards: CardType[];
-  onPlayCard: (index: number) => void;
+  onPlayCard: (uid: string) => void;
   actions: number;
-  productivityPoints: number;
+  player: Player;
 }
 
-export function PlayerHand({ cards, onPlayCard, actions, productivityPoints }: PlayerHandProps) {
+export function PlayerHand({ cards, onPlayCard, actions, player }: PlayerHandProps) {
+  const [playingCard, setPlayingCard] = useState<number | null>(null);
+  const [completedCards, setCompletedCards] = useState<Set<string>>(new Set());
+
+  console.log('PlayerHand render:', {
+    cards,
+    actions,
+    playingCard,
+    playerPopulation: getCurrentPopulation(player),
+    maxPopulation: calculateMaxPopulation(player)
+  });
+
   const canPlayCard = (card: CardType) => {
-    // Family cards can never be played
-    if (card.type.includes('family')) return false;
-    
-    // Check action requirements
-    if (card.type.includes('action') && actions <= 0) return false;
-    
-    // Check productivity cost for treasure cards
-    if (card.type.includes('treasure')) {
-      const productivityCost = card.productivityCost || 0;
-      if (productivityPoints < productivityCost) return false;
-    }
-    
-    return true;
+    const currentPopulation = getCurrentPopulation(player);
+    const maxPopulation = calculateMaxPopulation(player);
+    const canPlay = (
+      !(card.type.includes('action') && actions <= 0) &&
+      !(card.type.includes('family') && 
+        (currentPopulation + (card.born || 0)) > maxPopulation)
+    );
+
+    console.log('🃏', card.name, canPlay ? '✅' : '❌', {
+      pop: `${currentPopulation}/${maxPopulation}`,
+      actions
+    });
+
+    return canPlay;
   };
 
   const getCardTransform = (index: number, totalCards: number) => {
@@ -32,7 +48,7 @@ export function PlayerHand({ cards, onPlayCard, actions, productivityPoints }: P
     const startRotation = -(totalSpread / 2);
     const rotation = startRotation + (index * degreesPerCard);
 
-    // Calculate horizontal position - UPDATED
+    // Calculate horizontal position
     const cardWidth = 144; // Matches w-36 class
     const overlapFactor = 0.7;
     const effectiveCardWidth = cardWidth * overlapFactor;
@@ -53,38 +69,113 @@ export function PlayerHand({ cards, onPlayCard, actions, productivityPoints }: P
     const distanceFromCenter = Math.abs(index - centerIndex);
     const verticalOffset = (distanceFromCenter * maxVerticalOffset) / centerIndex;
 
-    return `translateX(${translateX}px) translateY(${verticalOffset}px) rotate(${rotation}deg)`;
+    return {
+      translateX,
+      translateY: verticalOffset,
+      rotate: rotation
+    };
   };
+
+  const handlePlayCard = (index: number, card: CardType) => {
+    if (!canPlayCard(card)) return;
+    
+    setPlayingCard(index);
+    // Delay the actual card play until animation completes
+    setTimeout(() => {
+      onPlayCard(index);
+      setPlayingCard(null);
+    }, 600); // Match this with animation duration
+  };
+
+  useEffect(() => {
+    setCompletedCards(new Set());
+  }, [cards]);
 
   return (
     <>
       {/* Background gradient overlay */}
       <div className="fixed bottom-0 left-0 right-0 h-80 pointer-events-none bg-gradient-to-t from-gray-900/50 to-transparent" />
       
-      {/* Cards container - UPDATED positioning */}
+      {/* Cards container */}
       <div className="fixed bottom-32 left-0 right-0 mx-auto w-full">
         <div className="relative flex justify-center">
-          {cards.map((card, index) => (
-            <div
-              key={index}
-              className="absolute group"
-              style={{
-                transform: getCardTransform(index, cards.length),
-                transformOrigin: 'bottom center',
-                zIndex: index,
-              }}
-            >
-              <div 
-                className="transform transition-all duration-200 ease-out cursor-pointer hover:-translate-y-32 hover:z-50"
-                onClick={() => canPlayCard(card) && onPlayCard(index)}
-              >
-                <CardComponent 
-                  card={card} 
-                  disabled={!canPlayCard(card)}
-                />
-              </div>
-            </div>
-          ))}
+          <AnimatePresence mode="sync">
+            {cards.map((card, index) => {
+              const transform = getCardTransform(index, cards.length);
+              const isPlaying = playingCard === index;
+              
+              return (
+                <motion.div
+                  key={`${card.uid}`}
+                  layout
+                  initial={{ 
+                    scale: 0.5, 
+                    opacity: 0,
+                    y: -100,
+                    rotate: Math.random() * 180 - 90,
+                  }}
+                  animate={{ 
+                    scale: isPlaying ? 0.8 : 1, 
+                    opacity: 1,
+                    y: isPlaying ? -200 : 0,
+                    x: isPlaying ? 0 : transform.translateX,
+                    rotate: isPlaying ? 0 : transform.rotate,
+                  }}
+                  exit={{ 
+                    scale: 0.5, 
+                    opacity: 0,
+                    y: -100,
+                    transition: {
+                      duration: 0.2
+                    }
+                  }}
+                  transition={{ 
+                    type: "spring",
+                    stiffness: 400,
+                    damping: 30,
+                    mass: 0.8,
+                    layout: true
+                  }}
+                  className={`absolute group ${isPlaying ? 'pointer-events-none' : ''}`}
+                  style={{
+                    transformOrigin: 'bottom center',
+                    zIndex: isPlaying ? 100 : index,
+                    perspective: '1000px',
+                    transformStyle: 'preserve-3d'
+                  }}
+                >
+                  <motion.div 
+                    className="transform cursor-pointer"
+                    whileHover={!isPlaying ? {
+                      y: -128,
+                      z: 50,
+                      transition: {
+                        type: "spring",
+                        stiffness: 500,
+                        damping: 30
+                      }
+                    } : undefined}
+                    onClick={() => handlePlayCard(index, card)}
+                    animate={{
+                      rotateX: isPlaying ? 45 : 0,
+                      scale: isPlaying ? 1.2 : 1,
+                      y: isPlaying ? -200 : 0,
+                      transition: {
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 30
+                      }
+                    }}
+                  >
+                    <CardComponent 
+                      card={card} 
+                      disabled={!canPlayCard(card)}
+                    />
+                  </motion.div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       </div>
     </>
