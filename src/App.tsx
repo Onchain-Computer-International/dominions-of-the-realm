@@ -3,7 +3,6 @@ import { useGameState } from './Game';
 import { PlayerHand } from './components/PlayerHand';
 import { Supply } from './components/Supply';
 import { GameHeader } from './components/GameHeader';
-import { DeckViewer } from './components/DeckViewer';
 import { Toast } from './components/Toast';
 
 export default function App() {
@@ -20,7 +19,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="max-w-7xl mx-auto p-8 pb-80">
+      <div className="max-w-7xl mx-auto p-8 pb-40">
         <GameHeader 
           player={player}
           turn={gameState.turn}
@@ -29,15 +28,14 @@ export default function App() {
           actions={player.actions}
           coins={player.coins}
           buys={player.buys}
+          workload={gameState.workload}
+          happiness={gameState.happiness}
           activeEffects={gameState.activeEffects}
-          onEndTurn={endTurn}
-        />
-
-        <DeckViewer
           deck={player.deck}
           discard={player.discard}
           inPlay={player.inPlay}
           hand={player.hand}
+          onEndTurn={endTurn}
         />
 
         <Supply

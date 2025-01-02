@@ -202,13 +202,15 @@ export function createInitialGameState(): GameState {
     activeEffects: [],
     gameEnded: false,
     season,
-    month
+    month,
+    workload: 0,
+    happiness: 50  // Initialize happiness at 50%
   };
 }
 
 // Player management
 export function createPlayer(id: string): Player {
-  const deck = createInitialDeck();
+  const deck = shuffleArray(createInitialDeck());
   const initialPlayer: Player = {
     id,
     deck,
@@ -241,7 +243,7 @@ export function createInitialDeck(): Card[] {
     cloneCard(copper), cloneCard(copper), cloneCard(copper),
     cloneCard(woods), cloneCard(woods), cloneCard(woods),
     cloneCard(forest), cloneCard(forest),
-    cloneCard(shack), cloneCard(shack), cloneCard(shack)
+    cloneCard(shack), cloneCard(shack)
   ];
 }
 
@@ -298,6 +300,9 @@ export function endTurn(state: GameState): void {
       drawCards(player, 5);
     });
   }
+  
+  // Reset workload at end of turn
+  state.workload = 0;
 }
 
 export function addCoins(player: Player, amount: number): void {
@@ -330,6 +335,16 @@ export function cloneCards(cards: Card[]): Card[] {
   return cards.map(cloneCard);
 }
 
+// Add this new function to calculate happiness penalty
+function calculateHappinessPenalty(workload: number, population: number): number {
+  const maxWorkload = population * 2;
+  if (workload > maxWorkload) {
+    // Simply subtract the maximum from the current workload to get penalty
+    return workload - maxWorkload;
+  }
+  return 0;
+}
+
 export function useGameState() {
   const [state, setState] = useState<GameState>(createInitialGameState);
   const [toast, setToast] = useState<string | null>(null);
@@ -347,7 +362,10 @@ export function useGameState() {
           return prev;
         }
 
-        // Rest of the playCard logic remains the same
+        // Create new state object first
+        const newState = { ...prev };
+        
+        // Rest of the playCard logic
         const updatedPlayer = {
           ...player,
           hand: player.hand.filter((_, i) => i !== cardIndex),
@@ -371,20 +389,20 @@ export function useGameState() {
         
         if (card.type.includes('treasure')) {
           updatedPlayer.coins = player.coins + (card.coins || 0);
+          newState.workload += (card.workload || 0);
+          
+          // Calculate happiness penalty based on new workload
+          const currentPopulation = getCurrentPopulation(updatedPlayer);
+          const happinessPenalty = calculateHappinessPenalty(newState.workload, currentPopulation);
+          newState.happiness = Math.max(0, 50 - happinessPenalty); // Ensure happiness doesn't go below 0
         }
 
-        if (card.cards) drawCards(updatedPlayer, card.cards);
-
-        return applyCardEffects(
-          { 
-            ...prev, 
-            players: prev.players.map((p, i) => 
-              i === prev.currentPlayer ? updatedPlayer : p
-            ) 
-          },
-          updatedPlayer, 
-          card.id
+        // Update players in the new state
+        newState.players = newState.players.map((p, i) => 
+          i === prev.currentPlayer ? updatedPlayer : p
         );
+
+        return applyCardEffects(newState, updatedPlayer, card.id);
       });
     },
 
@@ -460,6 +478,9 @@ export function useGameState() {
           });
         }
         
+        // Reset workload at end of turn
+        newState.workload = 0;
+        
         return newState;
       });
     }
@@ -485,4 +506,11 @@ export function getCurrentPopulation(player: Player): number {
   return allCards
     .filter(card => card.type.includes('family'))
     .reduce((total, card) => total + (card.headcount || 0), 0);
+}
+
+// Add function to calculate total workload
+export function calculateTotalWorkload(player: Player): number {
+  return player.inPlay
+    .filter(card => card.type.includes('treasure'))
+    .reduce((total, card) => total + (card.workload || 0), 0);
 }

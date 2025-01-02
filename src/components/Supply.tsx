@@ -17,7 +17,6 @@ export function Supply({ supply, onBuyCard, playerCoins, playerBuys }: SupplyPro
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-4">Supply</h2>
       <motion.div 
         layout="position"
         className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4"

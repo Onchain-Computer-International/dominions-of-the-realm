@@ -1,5 +1,5 @@
 import { Card as CardType } from '../types/game';
-import { Coins, Gauge, Users } from 'lucide-react';
+import { Coins, Gauge, Users, Hammer } from 'lucide-react';
 import { Player } from '../types/game';
 
 // Combine utility functions into a CardUtils object
@@ -94,8 +94,8 @@ export function Card({ card, onClick, count, className = '', disabled }: CardPro
 
       {/* Card Content */}
       <div className="relative h-full flex flex-col">
-        {/* Header and Types in the image area */}
-        <div className="p-3">
+        {/* Header and Types in the image area - now with explicit height */}
+        <div className="p-3 h-[190px]">
           <div>
             <h3 className="font-bold text-base text-white truncate">{card.name}</h3>
             {card.familyName && (
@@ -115,11 +115,21 @@ export function Card({ card, onClick, count, className = '', disabled }: CardPro
             ))}
           </div>
 
-          {/* Coin Value for Treasure Cards */}
-          {card.type.includes('treasure') && card.coins && (
-            <div className="flex items-center gap-1 mt-1 px-2 py-0.5 bg-amber-500/80 rounded w-fit">
-              <Coins size={12} className="text-amber-100" />
-              <span className="text-xs font-medium text-amber-100">+{card.coins}</span>
+          {/* Coin Value and Workload for Treasure Cards */}
+          {(card.type.includes('treasure') || card.type.includes('wealth')) && (
+            <div className="flex flex-col gap-1 mt-1">
+              {card.coins && (
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/80 rounded w-fit">
+                  <Coins size={12} className="text-amber-100" />
+                  <span className="text-xs font-medium text-amber-100">+{card.coins}</span>
+                </div>
+              )}
+              {card.workload && (
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-500/80 rounded w-fit">
+                  <Hammer size={12} className="text-gray-100" />
+                  <span className="text-xs font-medium text-gray-100">+{card.workload}</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -132,12 +142,11 @@ export function Card({ card, onClick, count, className = '', disabled }: CardPro
           )}
         </div>
 
-        {/* Description and Lore - now full width at bottom */}
-        <div className="mt-auto w-full bg-black/40 p-3 space-y-2">
+        {/* Description and Lore - now with explicit height */}
+        <div className="h-[96px] w-full bg-black/40 p-3 space-y-2 overflow-y-auto">
           <p className="text-xs leading-tight text-white/90">{card.description}</p>
           <p className="text-xs leading-tight italic text-white/70">{card.lore}</p>
 
-          {/* Supply Count moved inside description box */}
           {count !== undefined && (
             <div className="absolute bottom-2 right-2 text-sm font-medium text-white/90 bg-black/50 px-2 py-0.5 rounded">
               {count} left

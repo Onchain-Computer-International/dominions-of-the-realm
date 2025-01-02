@@ -24,6 +24,7 @@ export interface Card {
     condition?: (state: GameState, trigger?: { card?: Card }) => boolean;
     apply: (state: GameState, player: Player) => GameState;
   }>;
+  workload?: number;
 }
 
 export interface Player {
@@ -44,6 +45,9 @@ export interface GameState {
   turn: number;
   month: number;
   season: Season;
+  workload: number;
+  happiness: number;
+  activeEffects: ActiveEffect[];
 }
 
 export interface GameAction {

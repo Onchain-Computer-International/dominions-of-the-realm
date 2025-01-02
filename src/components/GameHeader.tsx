@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Swords, Coins, ShoppingCart, Users, Calendar, Sparkles } from 'lucide-react';
+import { Swords, Coins, ShoppingCart, Users, Calendar, Sparkles, Hammer, Heart, Layers } from 'lucide-react';
 import { Player, Season, ActiveEffect } from '../types/game';
 import { getSeasonEmoji, getMonthName } from '../Game';
 import { getCurrentPopulation, calculateMaxPopulation } from '../Game';
+import { DeckViewer } from './DeckViewer';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface GameHeaderProps {
   player: Player;
@@ -12,7 +14,13 @@ interface GameHeaderProps {
   actions: number;
   coins: number;
   buys: number;
+  workload: number;
+  happiness: number;
   activeEffects: ActiveEffect[];
+  deck: CardType[];
+  discard: CardType[];
+  inPlay: CardType[];
+  hand: CardType[];
   onEndTurn: () => void;
 }
 
@@ -71,6 +79,13 @@ function AnimatedValue({ value, className = "" }: AnimatedValueProps) {
   );
 }
 
+function getWorkloadColor(workload: number, population: number): string {
+  const ratio = workload / population;
+  if (ratio > 2) return 'bg-red-50 text-black';
+  if (ratio >= 1.8) return 'bg-yellow-50 text-black';
+  return 'bg-green-50 text-black';
+}
+
 export function GameHeader({ 
   player, 
   turn,
@@ -79,83 +94,136 @@ export function GameHeader({
   actions,
   coins,
   buys,
+  workload,
+  happiness,
   activeEffects,
-  onEndTurn 
+  deck,
+  discard,
+  inPlay,
+  hand,
+  onEndTurn
 }: GameHeaderProps) {
+  const currentPopulation = getCurrentPopulation(player);
+  const workloadColor = getWorkloadColor(workload, currentPopulation);
+  const maxWorkload = currentPopulation * 2;
+  const totalCards = deck.length + discard.length + inPlay.length + hand.length;
+
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-      {/* Top Section: Time and Population */}
-      <div className="flex justify-between items-center mb-4">
-        {/* Left Side */}
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-md">
-            <Calendar size={16} className="text-indigo-500" />
-            <span className="text-sm font-semibold text-indigo-700">
-              {getSeasonEmoji(season)} {getMonthName(season, month)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-md">
-            <Users size={16} className="text-blue-500" />
-            <span className="text-sm font-semibold text-blue-700">
+    <div className="bg-white p-3 rounded-lg shadow-md mb-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-md text-xs">
+            <Users size={14} className="text-blue-500" />
+            <span className="font-semibold text-blue-700">
               Population: <AnimatedValue value={getCurrentPopulation(player)} /> / {calculateMaxPopulation(player)}
             </span>
           </div>
-        </div>
-
-        {/* Right Side - Turn Counter */}
-        <div className="bg-gray-100 px-3 py-1.5 rounded-md">
-          <span className="text-sm font-semibold text-gray-700">Turn {turn}</span>
-        </div>
-      </div>
-
-      {/* Active Effects Section */}
-      {activeEffects.length > 0 && (
-        <div className="flex gap-2 mb-4 pt-2 border-t border-gray-100">
-          {activeEffects.map((effect) => (
-            <div 
-              key={effect.id}
-              className="flex items-center gap-1.5 bg-purple-50 px-2 py-1 rounded text-xs font-medium text-purple-700"
-            >
-              <Sparkles size={12} className="text-purple-500" />
-              {effect.sourceCard}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Bottom Section: Resources and Actions */}
-      <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-        {/* Resource Counters */}
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 bg-purple-50 px-3 py-1.5 rounded-md">
-            <Swords size={16} className="text-purple-500" />
-            <span className="text-sm font-medium">
+          <div className="flex items-center gap-1 bg-pink-50 px-2 py-1 rounded-md text-xs">
+            <Heart size={14} className="text-pink-500" />
+            <span className="font-semibold text-pink-700">
+              Happiness: <AnimatedValue value={happiness} />%
+            </span>
+          </div>
+          <div className="flex items-center gap-1 bg-purple-50 px-2 py-1 rounded-md text-xs">
+            <Swords size={14} className="text-purple-500" />
+            <span className="font-medium">
               Actions: <AnimatedValue value={actions} />
             </span>
           </div>
-          <div className="flex items-center gap-2 bg-yellow-50 px-3 py-1.5 rounded-md">
-            <Coins size={16} className="text-yellow-500" />
-            <span className="text-sm font-medium">
+          <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-md text-xs">
+            <Coins size={14} className="text-yellow-500" />
+            <span className="font-medium">
               Coins: <AnimatedValue value={coins} />
             </span>
           </div>
-          <div className="flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-md">
-            <ShoppingCart size={16} className="text-green-500" />
-            <span className="text-sm font-medium">
+          <div className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded-md text-xs">
+            <ShoppingCart size={14} className="text-green-500" />
+            <span className="font-medium">
               Buys: <AnimatedValue value={buys} />
+            </span>
+          </div>
+          <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs ${workloadColor}`}>
+            <Hammer size={14} />
+            <span className="font-medium">
+              Workload: <AnimatedValue value={workload} /> / {maxWorkload}
             </span>
           </div>
         </div>
 
-        {/* End Turn Button */}
-        <button
-          onClick={onEndTurn}
-          className="px-6 py-2 bg-blue-500 text-white font-medium rounded-md
-            hover:bg-blue-600 transition-colors shadow-sm
-            active:transform active:scale-95"
-        >
-          End Turn
-        </button>
+        <div className="flex items-center gap-4">
+          {activeEffects.length > 0 && (
+            <div className="flex gap-1">
+              {activeEffects.map((effect) => (
+                <div 
+                  key={effect.id}
+                  className="flex items-center gap-1 bg-purple-50 px-1.5 py-0.5 rounded text-xs font-medium text-purple-700"
+                >
+                  <Sparkles size={10} className="text-purple-500" />
+                  {effect.sourceCard}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <DeckViewer
+            deck={deck}
+            discard={discard}
+            inPlay={inPlay}
+            hand={hand}
+          >
+            <button className="bg-white rounded-full p-2 hover:bg-gray-50 flex items-center gap-2">
+              <Layers size={20} className="text-gray-500" />
+              <span className="font-medium text-gray-600">Cards: {totalCards}</span>
+            </button>
+          </DeckViewer>
+
+          <div className="flex items-center gap-2">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className="flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded-md text-xs"
+            >
+              <Calendar size={14} className="text-indigo-500" />
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={`${season}-${month}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="font-semibold text-indigo-700"
+                >
+                  {getSeasonEmoji(season)} {getMonthName(season, month)}
+                </motion.span>
+              </AnimatePresence>
+            </motion.div>
+            
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className="bg-gray-100 px-2 py-1 rounded-md text-xs"
+            >
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={turn}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.2 }}
+                  className="font-semibold text-gray-700"
+                >
+                  Turn {turn}
+                </motion.span>
+              </AnimatePresence>
+            </motion.div>
+
+            <motion.button
+              onClick={onEndTurn}
+              whileHover={{ scale: 1.05, backgroundColor: '#2563eb' }}
+              whileTap={{ scale: 0.95 }}
+              className="px-4 py-1 bg-blue-500 text-white text-xs font-medium rounded-md
+                transition-colors shadow-sm"
+            >
+              End Turn
+            </motion.button>
+          </div>
+        </div>
       </div>
     </div>
   );

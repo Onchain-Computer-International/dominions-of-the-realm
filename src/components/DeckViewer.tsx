@@ -8,6 +8,7 @@ interface DeckViewerProps {
   discard: CardType[];
   inPlay: CardType[];
   hand: CardType[];
+  children: React.ReactNode;
 }
 
 function FaceDownCard({ className = '' }: { className?: string }) {
@@ -34,9 +35,11 @@ function FaceDownCard({ className = '' }: { className?: string }) {
   );
 }
 
-export function DeckViewer({ deck, discard, inPlay, hand }: DeckViewerProps) {
+export function DeckViewer({ deck, discard, inPlay, hand, children }: DeckViewerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
+  const totalCards = deck.length + discard.length + inPlay.length + hand.length;
+
   // Use memoization to prevent unnecessary recalculations
   const sortedCards = useMemo(() => {
     // Create a map to track cards and their zones
@@ -95,61 +98,74 @@ export function DeckViewer({ deck, discard, inPlay, hand }: DeckViewerProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md mb-6">
-      <div className="p-4">
+    <>
+      <div onClick={() => setIsExpanded(true)}>
+        {children}
+      </div>
+
+      {isExpanded && (
         <div 
-          className="flex flex-wrap items-center gap-4 mb-4 cursor-pointer"
-          onClick={() => setIsExpanded(!isExpanded)}
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setIsExpanded(false)}
         >
-          <div className="flex items-center gap-2">
-            <Layers size={16} className="text-gray-500" />
-            <h3 className="font-medium">Deck Overview</h3>
-            {isExpanded ? (
-              <ChevronUp size={16} className="text-gray-500" />
-            ) : (
-              <ChevronDown size={16} className="text-gray-500" />
-            )}
-          </div>
-          <div className="flex gap-4 text-xs">
-            <div className="flex items-center gap-1">
-              <Hand size={14} className="text-blue-500" />
-              <span className="text-blue-600">In Hand ({hand.length})</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Layers size={14} className="text-gray-500" />
-              <span className="text-gray-600">In Deck ({deck.length})</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Play size={14} className="text-green-500" />
-              <span className="text-green-600">In Play ({inPlay.length})</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Trash size={14} className="text-red-500" />
-              <span className="text-red-600">Discarded ({discard.length})</span>
+          <div 
+            className="bg-white rounded-lg shadow-md w-full max-w-[1040px] max-h-[80vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4">
+              <div 
+                className="flex flex-wrap items-center gap-4 mb-4 cursor-pointer"
+                onClick={() => setIsExpanded(false)}
+              >
+                <div className="flex items-center gap-2">
+                  <Layers size={16} className="text-gray-500" />
+                  <h3 className="font-medium">Deck Overview</h3>
+                  {isExpanded ? (
+                    <ChevronUp size={16} className="text-gray-500" />
+                  ) : (
+                    <ChevronDown size={16} className="text-gray-500" />
+                  )}
+                </div>
+                <div className="flex gap-4 text-xs">
+                  <div className="flex items-center gap-1">
+                    <Hand size={14} className="text-blue-500" />
+                    <span className="text-blue-600">In Hand ({hand.length})</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Layers size={14} className="text-gray-500" />
+                    <span className="text-gray-600">In Deck ({deck.length})</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Play size={14} className="text-green-500" />
+                    <span className="text-green-600">In Play ({inPlay.length})</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Trash size={14} className="text-red-500" />
+                    <span className="text-red-600">Discarded ({discard.length})</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1 p-4">
+                {sortedCards.map(({ card, zone }, index) => (
+                  <div 
+                    key={`${zone}-${card.id}-${index}`} 
+                    className="relative"
+                  >
+                    {zone === 'discard' ? (
+                      <FaceDownCard className={getCardStyle(zone)} />
+                    ) : (
+                      <CardComponent 
+                        card={card}
+                        className={getCardStyle(zone)}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-        
-        {isExpanded && (
-          <div className="flex flex-wrap gap-1 p-4">
-            {sortedCards.map(({ card, zone }, index) => (
-              <div 
-                key={`${zone}-${card.id}-${index}`} 
-                className="relative"
-              >
-                {zone === 'discard' ? (
-                  <FaceDownCard className={getCardStyle(zone)} />
-                ) : (
-                  <CardComponent 
-                    card={card}
-                    className={getCardStyle(zone)}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </>
   );
 }

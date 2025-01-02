@@ -20,8 +20,9 @@ const allCards: Card[] = [
     type: ['treasure'],
     cost: 0,
     coins: 1,
+    workload: 3,
     lore: 'A modest copper vein requiring basic labor to extract.',
-    description: 'Worth 1 coin.'
+    description: 'Worth 1 coin. Workload: 3'
   },
   {
     id: 'silver',
@@ -29,8 +30,9 @@ const allCards: Card[] = [
     type: ['treasure'],
     cost: 4,
     coins: 2,
+    workload: 5,
     lore: 'Deep silver deposits that demand skilled miners.',
-    description: 'Worth 2 coins.'
+    description: 'Worth 2 coins. Workload: 5'
   },
   {
     id: 'gold',
@@ -38,8 +40,9 @@ const allCards: Card[] = [
     type: ['treasure'],
     cost: 8,
     coins: 3,
+    workload: 8,
     lore: 'Rich gold veins requiring expert extraction.',
-    description: 'Worth 3 coins.'
+    description: 'Worth 3 coins. Workload: 8'
   },
 
   // Nature Mines
@@ -49,8 +52,9 @@ const allCards: Card[] = [
     type: ['treasure'],
     cost: 3,
     coins: 2,
+    workload: 4,
     lore: 'A peaceful woodland area rich with natural resources.',
-    description: 'Worth 1 coin.'
+    description: 'Worth 1 coin. Workload: 4'
   },
   {
     id: 'forest',
@@ -58,6 +62,7 @@ const allCards: Card[] = [
     type: ['treasure'],
     cost: 6,
     coins: 3,
+    workload: 6,  // Added workload
     lore: 'Dense forest teeming with valuable resources.',
     description: 'Worth 3 coins.'
   },
@@ -67,6 +72,7 @@ const allCards: Card[] = [
     type: ['treasure'],
     cost: 9,
     coins: 4,
+    workload: 8,  // Added workload
     lore: 'Ancient groves blessed with abundant natural wealth.',
     description: 'Worth 5 coins.'
   },
@@ -241,6 +247,27 @@ const allCards: Card[] = [
       })
     }]
   },
+  {
+    id: 'dragon_befriender',
+    name: 'Dragon Befriender',
+    type: ['curse'],
+    cost: 0,
+    lore: 'Making friends with dragons seemed like a good idea at the time.',
+    description: 'Worth -2 VP. When you play a Treasure, lose 1 coin.',
+    effects: [{
+      type: 'reaction',
+      timing: 'onCardPlay',
+      condition: (state, trigger) => trigger?.card?.type.includes('treasure') || false,
+      apply: (state, player) => ({
+        ...state,
+        players: state.players.map(p => 
+          p.id === player.id 
+            ? { ...p, coins: Math.max(0, p.coins - 1) }
+            : p
+        )
+      })
+    }]
+  },
 
   // Kingdom Cards
   {
@@ -293,7 +320,30 @@ const allCards: Card[] = [
     buys: 1,
     coins: 2,
     lore: 'A time of celebration and commerce.',
-    description: '+2 Actions, +1 Buy, +2 Coins'
+    description: '+2 Actions, +1 Buy, +2 Coins. Reset workload to 0.',
+    effects: [{
+      type: 'immediate',
+      apply: (state, player) => ({
+        ...state,
+        workload: 0
+      })
+    }]
+  },
+  {
+    id: 'workers',
+    name: 'Workers',
+    type: ['action'],
+    cost: 2,
+    coins: -2,
+    lore: 'Hired hands eager to help with the heavy lifting.',
+    description: 'Pay 2 coins. Remove 6 workload.',
+    effects: [{
+      type: 'immediate',
+      apply: (state, player) => ({
+        ...state,
+        workload: Math.max(0, state.workload - 6),
+      })
+    }]
   },
 
   // Wealth Cards
@@ -364,6 +414,32 @@ const allCards: Card[] = [
         const updatedPlayer = {
           ...player,
           coins: player.coins + 85
+        };
+        
+        return {
+          ...state,
+          players: state.players.map((p, i) => 
+            i === playerIndex ? updatedPlayer : p
+          )
+        };
+      }
+    }]
+  },
+  {
+    id: 'forest_dragon',
+    name: 'Forest Dragon',
+    type: ['action'],
+    cost: 100,
+    coins: 20,
+    lore: 'A legendary deed: vanquishing the dreaded Forest Dragon that terrorized the realm.',
+    description: 'Gain 20 coins.',
+    effects: [{
+      type: 'immediate',
+      apply: (state, player) => {
+        const playerIndex = state.players.findIndex(p => p.id === player.id);
+        const updatedPlayer = {
+          ...player,
+          coins: player.coins + 200
         };
         
         return {
