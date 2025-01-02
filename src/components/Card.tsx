@@ -1,5 +1,5 @@
 import { Card as CardType } from '../types/game';
-import { Coins, Gauge, Users, Hammer } from 'lucide-react';
+import { Coins, Gauge, Users, Hammer, ShoppingCart, Layers } from 'lucide-react';
 import { Player } from '../types/game';
 
 // Combine utility functions into a CardUtils object
@@ -115,19 +115,37 @@ export function Card({ card, onClick, count, className = '', disabled }: CardPro
             ))}
           </div>
 
-          {/* Coin Value and Workload for Treasure Cards */}
-          {(card.type.includes('treasure') || card.type.includes('wealth')) && (
+          {/* Modifiers Section */}
+          {(card.type.includes('treasure') || card.type.includes('wealth') || card.type.includes('action')) && (
             <div className="flex flex-col gap-1 mt-1">
               {card.coins && (
                 <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/80 rounded w-fit">
                   <Coins size={12} className="text-amber-100" />
-                  <span className="text-xs font-medium text-amber-100">+{card.coins}</span>
+                  <span className="text-xs font-medium text-amber-100">{card.coins >= 0 ? '+' : ''}{card.coins}</span>
                 </div>
               )}
               {card.workload && (
                 <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-500/80 rounded w-fit">
                   <Hammer size={12} className="text-gray-100" />
-                  <span className="text-xs font-medium text-gray-100">+{card.workload}</span>
+                  <span className="text-xs font-medium text-gray-100">{card.workload >= 0 ? '+' : ''}{card.workload}</span>
+                </div>
+              )}
+              {card.actions && (
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-purple-500/80 rounded w-fit">
+                  <Gauge size={12} className="text-purple-100" />
+                  <span className="text-xs font-medium text-purple-100">{card.actions >= 0 ? '+' : ''}{card.actions}</span>
+                </div>
+              )}
+              {card.cards && (
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/80 rounded w-fit">
+                  <Layers size={12} className="text-blue-100" />
+                  <span className="text-xs font-medium text-blue-100">{card.cards >= 0 ? '+' : ''}{card.cards}</span>
+                </div>
+              )}
+              {card.buys && (
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-green-500/80 rounded w-fit">
+                  <ShoppingCart size={12} className="text-green-100" />
+                  <span className="text-xs font-medium text-green-100">{card.buys >= 0 ? '+' : ''}{card.buys}</span>
                 </div>
               )}
             </div>

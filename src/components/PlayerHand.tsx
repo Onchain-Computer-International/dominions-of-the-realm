@@ -16,29 +16,14 @@ export function PlayerHand({ cards, onPlayCard, actions, player }: PlayerHandPro
   const [playingCards, setPlayingCards] = useState<Set<string>>(new Set());
   const [completedCards, setCompletedCards] = useState<Set<string>>(new Set());
 
-  console.log('PlayerHand render:', {
-    cards,
-    actions,
-    playingCards,
-    playerPopulation: getCurrentPopulation(player),
-    maxPopulation: calculateMaxPopulation(player)
-  });
-
   const canPlayCard = (card: CardType) => {
     const currentPopulation = getCurrentPopulation(player);
     const maxPopulation = calculateMaxPopulation(player);
-    const canPlay = (
+    return (
       !(card.type.includes('action') && actions <= 0) &&
       !(card.type.includes('family') && 
         (currentPopulation + (card.born || 0)) > maxPopulation)
     );
-
-    console.log('🃏', card.name, canPlay ? '✅' : '❌', {
-      pop: `${currentPopulation}/${maxPopulation}`,
-      actions
-    });
-
-    return canPlay;
   };
 
   const getCardTransform = (index: number, totalCards: number) => {

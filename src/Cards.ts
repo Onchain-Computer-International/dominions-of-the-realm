@@ -252,21 +252,30 @@ const allCards: Card[] = [
     name: 'Dragon Befriender',
     type: ['curse'],
     cost: 0,
+    coins: 1,
     lore: 'Making friends with dragons seemed like a good idea at the time.',
-    description: 'Worth -2 VP. When you play a Treasure, lose 1 coin.',
-    effects: [{
-      type: 'reaction',
-      timing: 'onCardPlay',
-      condition: (state, trigger) => trigger?.card?.type.includes('treasure') || false,
-      apply: (state, player) => ({
-        ...state,
-        players: state.players.map(p => 
-          p.id === player.id 
-            ? { ...p, coins: Math.max(0, p.coins - 1) }
-            : p
-        )
-      })
-    }]
+    description: 'At the start of your turn, lose 1 population but gain 1 coin.',
+    effects: [
+      {
+        type: 'duration',
+        timing: 'startOfTurn',
+        apply: (state, player) => {
+          const playerIndex = state.players.findIndex(p => p.id === player.id);
+          const updatedPlayer = { 
+            ...player,
+            coins: player.coins + 1,  // Add 1 coin
+            population: Math.max(0, (player.population || 0) - 1)  // Decrease population by 1
+          };
+
+          return {
+            ...state,
+            players: state.players.map((p, i) => 
+              i === playerIndex ? updatedPlayer : p
+            )
+          };
+        }
+      }
+    ]
   },
 
   // Kingdom Cards
@@ -335,15 +344,9 @@ const allCards: Card[] = [
     type: ['action'],
     cost: 2,
     coins: -2,
+    workload: -6,
     lore: 'Hired hands eager to help with the heavy lifting.',
     description: 'Pay 2 coins. Remove 6 workload.',
-    effects: [{
-      type: 'immediate',
-      apply: (state, player) => ({
-        ...state,
-        workload: Math.max(0, state.workload - 6),
-      })
-    }]
   },
 
   // Wealth Cards

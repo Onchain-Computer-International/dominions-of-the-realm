@@ -82,8 +82,10 @@ export function processEffects(state: GameState, timing: string): GameState {
 export function startTurnPhase(state: GameState, player: Player): GameState {
   const playerIndex = state.players.findIndex(p => p.id === player.id);
   
+  console.log('Starting turn phase with hand:', player.hand.map(c => c.name));
+  
   // Set base values, including resetting coins to 0
-  const updatedPlayer = {
+  let updatedPlayer = {
     ...player,
     actions: 1,  // Base action
     buys: 1,     // Base buy
@@ -97,29 +99,19 @@ export function startTurnPhase(state: GameState, player: Player): GameState {
     )
   };
 
-  // Add duration effects from all cards (hand, deck, discard, and in play)
-  const allCards = [...player.hand, ...player.deck, ...player.discard, ...player.inPlay];
-  allCards.forEach(card => {
+  // Process duration effects from cards in hand
+  updatedPlayer.hand.forEach(card => {
+    console.log('Checking card:', card.name);
     if (card.effects) {
+      console.log('Card has effects:', card.effects);
       card.effects.forEach(effect => {
+        console.log('Effect type:', effect.type, 'timing:', effect.timing);
         if (effect.type === 'duration' && effect.timing === 'startOfTurn') {
-          // Add to active effects if not already present
-          const effectExists = newState.activeEffects.some(
-            ae => ae.sourceCard === card.id && ae.playerId === player.id
-          );
-          
-          if (!effectExists) {
-            newState = {
-              ...newState,
-              activeEffects: [...newState.activeEffects, {
-                id: nanoid(),
-                sourceCard: card.name || card.id,
-                playerId: player.id,
-                remainingDuration: effect.duration || Infinity,
-                effect
-              }]
-            };
-          }
+          console.log('Applying effect for:', card.name);
+          newState = effect.apply?.(newState, updatedPlayer) ?? newState;
+          // Update the player reference after each effect
+          updatedPlayer = newState.players[playerIndex];
+          console.log('New population after effect:', updatedPlayer.population);
         }
       });
     }
@@ -127,6 +119,14 @@ export function startTurnPhase(state: GameState, player: Player): GameState {
 
   // Process any additional start of turn effects
   newState = processEffects(newState, 'startOfTurn');
+
+  // Ensure final player state is updated
+  newState = {
+    ...newState,
+    players: state.players.map((p, i) => 
+      i === playerIndex ? updatedPlayer : p
+    )
+  };
 
   return newState;
 }
@@ -219,7 +219,8 @@ export function createPlayer(id: string): Player {
     inPlay: [],
     actions: 1,
     coins: 0,
-    buys: 1
+    buys: 1,
+    population: 4  // Initialize with starting population (2 from each starting shack)
   };
 
   // Draw initial hand of 5 cards
@@ -373,10 +374,9 @@ export function useGameState() {
         };
 
         if (card.type.includes('family')) {
-          updatedPlayer.inPlay.push({
-            ...card,
-            headcount: (card.headcount || 0) + (card.born || 0)
-          });
+          updatedPlayer.inPlay.push(card);
+          // Update population when playing a family card
+          updatedPlayer.population += (card.starterHeadCount || 0);
         } else {
           updatedPlayer.inPlay.push(card);
         }
@@ -385,16 +385,19 @@ export function useGameState() {
           updatedPlayer.actions = player.actions + (card.actions || 0) - 1;
           updatedPlayer.coins = player.coins + (card.coins || 0);
           updatedPlayer.buys = player.buys + (card.buys || 0);
+          
+          if (card.workload) {
+            newState.workload = Math.max(0, newState.workload + card.workload);
+          }
         }
         
         if (card.type.includes('treasure')) {
           updatedPlayer.coins = player.coins + (card.coins || 0);
-          newState.workload += (card.workload || 0);
+          newState.workload = Math.max(0, newState.workload + (card.workload || 0));
           
-          // Calculate happiness penalty based on new workload
           const currentPopulation = getCurrentPopulation(updatedPlayer);
           const happinessPenalty = calculateHappinessPenalty(newState.workload, currentPopulation);
-          newState.happiness = Math.max(0, 50 - happinessPenalty); // Ensure happiness doesn't go below 0
+          newState.happiness = Math.max(0, 50 - happinessPenalty);
         }
 
         // Update players in the new state
@@ -419,16 +422,15 @@ export function useGameState() {
         const newSupply = new Map(prev.supply);
         newSupply.set(cardId, supplyPile.slice(1));
 
-        // If it's a family card, set initial population
-        if (boughtCard.type.includes('family')) {
-          boughtCard.headcount = boughtCard.starterHeadCount || 0;
-        }
+        // Update population when buying family cards
+        const populationChange = boughtCard.type.includes('family') ? (boughtCard.starterHeadCount || 0) : 0;
 
         const newPlayer = {
           ...player,
           discard: [...player.discard, boughtCard],
           buys: player.buys - 1,
-          coins: player.coins - boughtCard.cost
+          coins: player.coins - boughtCard.cost,
+          population: player.population + populationChange
         };
 
         return {
@@ -466,22 +468,11 @@ export function useGameState() {
         // Move to next player
         newState.currentPlayer = (newState.currentPlayer + 1) % newState.players.length;
         
-        // Handle season transition
-        if (month === 1) {
-          newState.players.forEach(player => {
-            const allCards = [...player.deck, ...player.hand, ...player.discard, ...player.inPlay];
-            player.deck = shuffleArray(allCards);
-            player.hand = [];
-            player.discard = [];
-            player.inPlay = [];
-            drawCards(player, 5);
-          });
-        }
-        
         // Reset workload at end of turn
         newState.workload = 0;
         
-        return newState;
+        // Start the new turn for the next player
+        return startTurnPhase(newState, newState.players[newState.currentPlayer]);
       });
     }
   }), []);
@@ -502,10 +493,7 @@ export function calculateMaxPopulation(player: Player): number {
 }
 
 export function getCurrentPopulation(player: Player): number {
-  const allCards = [...player.deck, ...player.hand, ...player.discard, ...player.inPlay];
-  return allCards
-    .filter(card => card.type.includes('family'))
-    .reduce((total, card) => total + (card.headcount || 0), 0);
+  return player.population;
 }
 
 // Add function to calculate total workload

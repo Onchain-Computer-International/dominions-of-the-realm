@@ -36,6 +36,7 @@ export interface Player {
   actions: number;
   coins: number;
   buys: number;
+  population: number;
 }
 
 export interface GameState {

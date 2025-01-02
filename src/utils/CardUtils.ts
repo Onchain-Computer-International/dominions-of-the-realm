@@ -3,21 +3,22 @@ import { shuffleArray } from './UtilityFunctions';
 
 export function drawCards(player: Player, count: number): { reshuffled: boolean } {
     let reshuffled = false;
-    let remainingToDraw = count;
-    
-    while (remainingToDraw > 0) {
-        if (player.deck.length === 0 && player.discard.length > 0) {
+
+    for (let i = 0; i < count; i++) {
+        // If deck is empty, shuffle discard into deck
+        if (player.deck.length === 0) {
+            if (player.discard.length === 0) {
+                break; // No cards left to draw
+            }
             player.deck = shuffleArray([...player.discard]);
             player.discard = [];
             reshuffled = true;
         }
-        
-        if (player.deck.length === 0) break;
-        
-        const card = player.deck.pop();
-        if (card) {
-            player.hand.push({...card});
-            remainingToDraw--;
+
+        // Draw a card
+        const drawnCard = player.deck.pop();
+        if (drawnCard) {
+            player.hand.push(drawnCard);
         }
     }
 

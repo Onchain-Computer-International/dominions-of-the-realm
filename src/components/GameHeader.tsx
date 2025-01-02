@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Swords, Coins, ShoppingCart, Users, Calendar, Sparkles, Hammer, Heart, Layers } from 'lucide-react';
+import { Swords, Coins, ShoppingCart, Users, Calendar, Sparkles, Hammer, Heart, Layers, Gauge } from 'lucide-react';
 import { Player, Season, ActiveEffect } from '../types/game';
 import { getSeasonEmoji, getMonthName } from '../Game';
 import { getCurrentPopulation, calculateMaxPopulation } from '../Game';
@@ -104,7 +104,6 @@ export function GameHeader({
   onEndTurn
 }: GameHeaderProps) {
   const currentPopulation = getCurrentPopulation(player);
-  const workloadColor = getWorkloadColor(workload, currentPopulation);
   const maxWorkload = currentPopulation * 2;
   const totalCards = deck.length + discard.length + inPlay.length + hand.length;
 
@@ -112,39 +111,33 @@ export function GameHeader({
     <div className="bg-white p-3 rounded-lg shadow-md mb-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-md text-xs">
-            <Users size={14} className="text-blue-500" />
-            <span className="font-semibold text-blue-700">
+          <div className="flex items-center gap-1 bg-emerald-500/80 px-2 py-1 rounded-md text-xs">
+            <Users size={14} className="text-emerald-100" />
+            <span className="font-semibold text-emerald-100">
               Population: <AnimatedValue value={getCurrentPopulation(player)} /> / {calculateMaxPopulation(player)}
             </span>
           </div>
-          <div className="flex items-center gap-1 bg-pink-50 px-2 py-1 rounded-md text-xs">
-            <Heart size={14} className="text-pink-500" />
-            <span className="font-semibold text-pink-700">
-              Happiness: <AnimatedValue value={happiness} />%
-            </span>
-          </div>
-          <div className="flex items-center gap-1 bg-purple-50 px-2 py-1 rounded-md text-xs">
-            <Swords size={14} className="text-purple-500" />
-            <span className="font-medium">
+          <div className="flex items-center gap-1 bg-purple-500/80 px-2 py-1 rounded-md text-xs">
+            <Gauge size={14} className="text-purple-100" />
+            <span className="font-medium text-purple-100">
               Actions: <AnimatedValue value={actions} />
             </span>
           </div>
-          <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-md text-xs">
-            <Coins size={14} className="text-yellow-500" />
-            <span className="font-medium">
+          <div className="flex items-center gap-1 bg-amber-500/80 px-2 py-1 rounded-md text-xs">
+            <Coins size={14} className="text-amber-100" />
+            <span className="font-medium text-amber-100">
               Coins: <AnimatedValue value={coins} />
             </span>
           </div>
-          <div className="flex items-center gap-1 bg-green-50 px-2 py-1 rounded-md text-xs">
-            <ShoppingCart size={14} className="text-green-500" />
-            <span className="font-medium">
+          <div className="flex items-center gap-1 bg-green-500/80 px-2 py-1 rounded-md text-xs">
+            <ShoppingCart size={14} className="text-green-100" />
+            <span className="font-medium text-green-100">
               Buys: <AnimatedValue value={buys} />
             </span>
           </div>
-          <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs ${workloadColor}`}>
-            <Hammer size={14} />
-            <span className="font-medium">
+          <div className="flex items-center gap-1 bg-gray-500/80 px-2 py-1 rounded-md text-xs">
+            <Hammer size={14} className="text-gray-100" />
+            <span className="font-medium text-gray-100">
               Workload: <AnimatedValue value={workload} /> / {maxWorkload}
             </span>
           </div>
