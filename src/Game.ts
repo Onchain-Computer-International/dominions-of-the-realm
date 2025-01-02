@@ -139,9 +139,9 @@ export function calculateTotalFamilyMembers(player: Player): number {
 export function createRandomSupply(): Map<string, Card[]> {
   const supply = new Map<string, Card[]>();
   
-  // Select 12 random cards from all available cards
+  // Select 6 random cards from all available cards (changed from 12)
   const allCards = [...baseCards];
-  const selectedRandomCards = shuffleArray(allCards).slice(0, 12);
+  const selectedRandomCards = shuffleArray(allCards).slice(0, 6);
   
   // Create supply piles with cloned copies of each selected card
   selectedRandomCards.forEach(card => {

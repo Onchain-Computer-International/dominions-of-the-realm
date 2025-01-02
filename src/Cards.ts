@@ -12,6 +12,40 @@ function generateFamilyName(): string {
   return familyNames[nameIndex];
 }
 
+// Add color property to Card type if not already present
+interface CardColor {
+  r: number;
+  g: number;
+  b: number;
+}
+
+// Add at the top of the file, before allCards
+const cardColors: Record<string, CardColor> = {
+  // Basic Mines
+  copper: { r: 184, g: 115, b: 51 },  // Copper brown
+  silver: { r: 192, g: 192, b: 192 }, // Silver gray
+  gold: { r: 255, g: 215, b: 0 },     // Gold yellow
+  
+  // Nature/Terrain
+  plains: { r: 120, g: 170, b: 60 },
+  hills: { r: 110, g: 140, b: 70 },
+  mountains: { r: 140, g: 140, b: 140 },
+  desert: { r: 230, g: 210, b: 160 },
+  rainforest: { r: 30, g: 90, b: 30 },
+  swamp: { r: 70, g: 80, b: 50 },
+  tundra: { r: 180, g: 180, b: 180 },
+  
+  // Forest types
+  woods: { r: 40, g: 100, b: 40 },
+  forest: { r: 34, g: 139, b: 34 },
+  groves: { r: 0, g: 100, b: 0 },
+  
+  // Water types
+  river: { r: 65, g: 105, b: 225 },    // Royal blue
+  lake: { r: 30, g: 144, b: 255 },     // Dodger blue
+  ocean: { r: 0, g: 119, b: 190 },     // Deep blue
+};
+
 const allCards: Card[] = [
   // Basic Mines
   {
@@ -21,8 +55,10 @@ const allCards: Card[] = [
     cost: 0,
     coins: 1,
     workload: 3,
+    rarity: 6,  // Copper is fairly common
     lore: 'A modest copper vein requiring basic labor to extract.',
-    description: 'Worth 1 coin. Workload: 3'
+    description: 'Worth 1 coin. Workload: 3',
+    color: cardColors.copper
   },
   {
     id: 'silver',
@@ -31,8 +67,10 @@ const allCards: Card[] = [
     cost: 4,
     coins: 2,
     workload: 5,
+    rarity: 8,  // Silver is moderately rare
     lore: 'Deep silver deposits that demand skilled miners.',
-    description: 'Worth 2 coins. Workload: 5'
+    description: 'Worth 2 coins. Workload: 5',
+    color: cardColors.silver
   },
   {
     id: 'gold',
@@ -41,8 +79,96 @@ const allCards: Card[] = [
     cost: 8,
     coins: 3,
     workload: 8,
+    rarity: 9,  // Gold is quite rare
     lore: 'Rich gold veins requiring expert extraction.',
-    description: 'Worth 3 coins. Workload: 8'
+    description: 'Worth 3 coins. Workload: 8',
+    color: cardColors.gold
+  },
+
+  // Nature/Terrain Cards (after the basic mines, before family cards)
+  {
+    id: 'plains',
+    name: 'Plains',
+    type: ['treasure'],
+    cost: 3,
+    coins: 1,
+    workload: 3,
+    rarity: 1,  // Plains are very common
+    lore: 'Rolling grasslands perfect for grazing and farming.',
+    description: 'Worth 1 coin. Workload: 3',
+    color: cardColors.plains
+  },
+  {
+    id: 'hills',
+    name: 'Hills',
+    type: ['treasure'],
+    cost: 5,
+    coins: 2,
+    workload: 4,
+    rarity: 2,  // Hills are common
+    lore: 'Gentle slopes rich with mineral deposits.',
+    description: 'Worth 2 coins. Workload: 4',
+    color: cardColors.hills
+  },
+  {
+    id: 'mountains',
+    name: 'Mountains',
+    type: ['treasure'],
+    cost: 7,
+    coins: 3,
+    workload: 6,
+    rarity: 4,  // Mountains are moderately common
+    lore: 'Towering peaks hiding valuable ore veins.',
+    description: 'Worth 3 coins. Workload: 6',
+    color: cardColors.mountains
+  },
+  {
+    id: 'desert',
+    name: 'Desert',
+    type: ['treasure'],
+    cost: 4,
+    coins: 2,
+    workload: 5,
+    rarity: 6,  // Deserts are less common
+    lore: 'Harsh sands concealing ancient treasures.',
+    description: 'Worth 2 coins. Workload: 5',
+    color: cardColors.desert
+  },
+  {
+    id: 'rainforest',
+    name: 'Rainforest',
+    type: ['treasure'],
+    cost: 8,
+    coins: 4,
+    workload: 7,
+    rarity: 7,  // Rainforests are relatively rare
+    lore: 'Dense jungle teeming with exotic resources.',
+    description: 'Worth 4 coins. Workload: 7',
+    color: cardColors.rainforest
+  },
+  {
+    id: 'swamp',
+    name: 'Swamp',
+    type: ['treasure'],
+    cost: 6,
+    coins: 3,
+    workload: 5,
+    rarity: 6,  // Swamps are less common
+    lore: 'Murky wetlands rich with rare herbs and resources.',
+    description: 'Worth 3 coins. Workload: 5',
+    color: cardColors.swamp
+  },
+  {
+    id: 'tundra',
+    name: 'Tundra',
+    type: ['treasure'],
+    cost: 5,
+    coins: 2,
+    workload: 6,
+    rarity: 7,  // Tundra is relatively rare
+    lore: 'Frozen wasteland hiding precious resources beneath the ice.',
+    description: 'Worth 2 coins. Workload: 6',
+    color: cardColors.tundra
   },
 
   // Nature Mines
@@ -53,8 +179,10 @@ const allCards: Card[] = [
     cost: 3,
     coins: 2,
     workload: 4,
+    rarity: 2,  // Woods are very common
     lore: 'A peaceful woodland area rich with natural resources.',
-    description: 'Worth 1 coin. Workload: 4'
+    description: 'Worth 1 coin. Workload: 4',
+    color: cardColors.woods
   },
   {
     id: 'forest',
@@ -62,9 +190,11 @@ const allCards: Card[] = [
     type: ['treasure'],
     cost: 6,
     coins: 3,
-    workload: 6,  // Added workload
+    workload: 6,
+    rarity: 3,  // Forests are moderately common
     lore: 'Dense forest teeming with valuable resources.',
-    description: 'Worth 3 coins.'
+    description: 'Worth 3 coins.',
+    color: cardColors.forest
   },
   {
     id: 'groves',
@@ -72,9 +202,11 @@ const allCards: Card[] = [
     type: ['treasure'],
     cost: 9,
     coins: 4,
-    workload: 8,  // Added workload
+    workload: 8,
+    rarity: 8,  // Sacred groves are quite rare
     lore: 'Ancient groves blessed with abundant natural wealth.',
-    description: 'Worth 5 coins.'
+    description: 'Worth 5 coins.',
+    color: cardColors.groves
   },
 
   // Lower Tier Family Cards
@@ -89,7 +221,8 @@ const allCards: Card[] = [
     born: 1,
     headcount: 2,
     lore: 'A humble family dwelling on the outskirts.',
-    description: 'A simple dwelling for a small family.'
+    description: 'A simple dwelling for a small family.',
+    color: { r: 0, g: 0, b: 0 }
   },
   {
     id: 'hut',
@@ -118,7 +251,8 @@ const allCards: Card[] = [
           )
         };
       }
-    }]
+    }],
+    color: { r: 0, g: 0, b: 0 }
   },
   {
     id: 'cabin',
@@ -144,7 +278,8 @@ const allCards: Card[] = [
             : p
         )
       })
-    }]
+    }],
+    color: { r: 0, g: 0, b: 0 }
   },
 
   // Standard Tier Family Cards
@@ -172,7 +307,8 @@ const allCards: Card[] = [
             : p
         )
       })
-    }]
+    }],
+    color: { r: 0, g: 0, b: 0 }
   },
   {
     id: 'duchy',
@@ -197,7 +333,8 @@ const allCards: Card[] = [
             : p
         )
       })
-    }]
+    }],
+    color: { r: 0, g: 0, b: 0 }
   },
   {
     id: 'province',
@@ -222,7 +359,8 @@ const allCards: Card[] = [
             : p
         )
       })
-    }]
+    }],
+    color: { r: 0, g: 0, b: 0 }
   },
 
   // Curse Cards
@@ -245,7 +383,8 @@ const allCards: Card[] = [
             : p
         )
       })
-    }]
+    }],
+    color: { r: 0, g: 0, b: 0 }
   },
   {
     id: 'dragon_befriender',
@@ -287,7 +426,8 @@ const allCards: Card[] = [
     actions: 2,
     cards: 1,
     lore: 'A bustling hamlet where workers gather.',
-    description: '+2 Actions, +1 Card'
+    description: '+2 Actions, +1 Card',
+    color: { r: 0, g: 0, b: 0 }
   },
   {
     id: 'smithy',
@@ -296,7 +436,8 @@ const allCards: Card[] = [
     cost: 16,
     cards: 3,
     lore: 'The rhythmic sound of hammers fills the air.',
-    description: '+3 Cards'
+    description: '+3 Cards',
+    color: { r: 0, g: 0, b: 0 }
   },
   {
     id: 'market',
@@ -308,7 +449,8 @@ const allCards: Card[] = [
     buys: 1,
     coins: 1,
     lore: 'A thriving marketplace where goods change hands.',
-    description: '+1 Card, +1 Action, +1 Buy, +1 Coin'
+    description: '+1 Card, +1 Action, +1 Buy, +1 Coin',
+    color: { r: 0, g: 0, b: 0 }
   },
   {
     id: 'laboratory',
@@ -318,7 +460,8 @@ const allCards: Card[] = [
     cards: 2,
     actions: 1,
     lore: 'Where alchemists unlock nature\'s secrets.',
-    description: '+2 Cards, +1 Action'
+    description: '+2 Cards, +1 Action',
+    color: { r: 0, g: 0, b: 0 }
   },
   {
     id: 'festival',
@@ -336,7 +479,8 @@ const allCards: Card[] = [
         ...state,
         workload: 0
       })
-    }]
+    }],
+    color: { r: 0, g: 0, b: 0 }
   },
   {
     id: 'workers',
@@ -347,6 +491,7 @@ const allCards: Card[] = [
     workload: -6,
     lore: 'Hired hands eager to help with the heavy lifting.',
     description: 'Pay 2 coins. Remove 6 workload.',
+    color: { r: 0, g: 0, b: 0 }
   },
 
   // Wealth Cards
@@ -453,6 +598,44 @@ const allCards: Card[] = [
         };
       }
     }]
+  },
+
+  // Water types
+  {
+    id: 'river',
+    name: 'River',
+    type: ['treasure'],
+    cost: 4,
+    coins: 2,
+    workload: 4,
+    rarity: 3,  // Rivers are fairly common
+    lore: 'A flowing river teeming with fish and valuable minerals.',
+    description: 'Worth 2 coins. Workload: 4',
+    color: cardColors.river
+  },
+  {
+    id: 'lake',
+    name: 'Lake',
+    type: ['treasure'],
+    cost: 6,
+    coins: 3,
+    workload: 5,
+    rarity: 5,  // Lakes are moderately common
+    lore: 'A pristine lake holding countless treasures beneath its surface.',
+    description: 'Worth 3 coins. Workload: 5',
+    color: cardColors.lake
+  },
+  {
+    id: 'ocean',
+    name: 'Ocean',
+    type: ['treasure'],
+    cost: 8,
+    coins: 4,
+    workload: 7,
+    rarity: 7,  // Oceans are rarer
+    lore: 'Vast waters hiding untold riches in their depths.',
+    description: 'Worth 4 coins. Workload: 7',
+    color: cardColors.ocean
   }
 ];
 

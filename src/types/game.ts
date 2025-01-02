@@ -1,6 +1,11 @@
 export type CardType = 'action' | 'treasure' | 'family' | 'curse' | 'wealth';
 export type Season = 'spring' | 'summer' | 'fall' | 'winter';
 
+export type TerrainType = 'ocean' | 'coast' | 'beach' | 'mountains' | 'hills' | 
+                         'desert' | 'rainforest' | 'swamp' | 'forest' | 'grassland' | 'plains';
+
+export type BiomeType = 'polar' | 'continental' | 'arid' | 'tropical' | 'temperate';
+
 export interface Card {
   id: string;
   uid?: string;
@@ -54,4 +59,12 @@ export interface GameState {
 export interface GameAction {
   type: string;
   payload?: any;
+}
+
+export interface TerrainData {
+    type: TerrainType;
+    elevation: number;
+    moisture: number;
+    temperature: number;
+    biome: BiomeType;
 }

@@ -1,22 +1,25 @@
 import { useMemo, useState } from 'react';
 import { Card as CardComponent } from './Card';
 import { Card as CardType } from '../types/game';
-import { Layers, Hand, Play, Trash, ChevronDown, ChevronUp } from 'lucide-react';
+import { Layers, Hand, Play, Trash, ChevronDown, ChevronRight, Code } from 'lucide-react';
+import { Modal, ModalHeader, ModalBody } from './Modal';
 
 interface DeckViewerProps {
+  isOpen: boolean;
+  onClose: () => void;
   deck: CardType[];
   discard: CardType[];
   inPlay: CardType[];
   hand: CardType[];
-  children: React.ReactNode;
 }
+
+type TabType = 'visual' | 'json';
 
 function FaceDownCard({ className = '' }: { className?: string }) {
   return (
     <div 
       className={`relative bg-gray-800 rounded-lg shadow-lg border ${className} w-48 h-72 transform-gpu overflow-hidden`}
     >
-      {/* Card Back Pattern */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900">
         <div className="absolute inset-0 opacity-10">
           <div className="grid grid-cols-4 gap-4 p-4">
@@ -26,8 +29,6 @@ function FaceDownCard({ className = '' }: { className?: string }) {
           </div>
         </div>
       </div>
-
-      {/* Center Icon */}
       <div className="absolute inset-0 flex items-center justify-center">
         <Layers className="w-16 h-16 text-gray-600" />
       </div>
@@ -35,17 +36,15 @@ function FaceDownCard({ className = '' }: { className?: string }) {
   );
 }
 
-export function DeckViewer({ deck, discard, inPlay, hand, children }: DeckViewerProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+export function DeckViewer({ isOpen, onClose, deck, discard, inPlay, hand }: DeckViewerProps) {
+  const [activeTab, setActiveTab] = useState<TabType>('visual');
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   
   const totalCards = deck.length + discard.length + inPlay.length + hand.length;
 
-  // Use memoization to prevent unnecessary recalculations
   const sortedCards = useMemo(() => {
-    // Create a map to track cards and their zones
     const cardTracker = new Map<string, { card: CardType; zone: 'hand' | 'play' | 'discard' | 'deck' }>();
     
-    // Track cards in order of display priority
     deck.forEach((card, index) => {
       cardTracker.set(`deck-${card.id}-${index}`, { card, zone: 'deck' });
     });
@@ -62,7 +61,6 @@ export function DeckViewer({ deck, discard, inPlay, hand, children }: DeckViewer
       cardTracker.set(`hand-${card.id}-${index}`, { card, zone: 'hand' });
     });
 
-    // Sort cards by type priority
     return [...cardTracker.values()].sort((a, b) => {
       const getTypePriority = (card: CardType) => {
         if (card.type.includes('family')) return 1;
@@ -79,93 +77,111 @@ export function DeckViewer({ deck, discard, inPlay, hand, children }: DeckViewer
         return priorityA - priorityB;
       }
 
-      // Secondary sort by cost
       return (a.card.cost || 0) - (b.card.cost || 0);
     });
   }, [deck, discard, inPlay, hand]);
 
-  const getCardStyle = (zone: 'hand' | 'play' | 'discard' | 'deck') => {
+  const groupedCards = useMemo(() => {
+    return sortedCards.reduce((acc, { card, zone }) => {
+      if (!acc[zone]) {
+        acc[zone] = [];
+      }
+      acc[zone].push(card);
+      return acc;
+    }, {} as Record<string, CardType[]>);
+  }, [sortedCards]);
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  };
+
+  const getZoneIcon = (zone: string) => {
     switch (zone) {
-      case 'hand':
-        return 'border-blue-500 border-2 ring-4 ring-blue-200 shadow-lg shadow-blue-100';
-      case 'play':
-        return 'border-green-400 ring-2 ring-green-100';
-      case 'discard':
-        return 'border-red-400 ring-2 ring-red-100';
-      default:
-        return 'border-gray-200';
+      case 'hand': return <Hand size={20} className="text-blue-400" />;
+      case 'play': return <Play size={20} className="text-green-400" />;
+      case 'discard': return <Trash size={20} className="text-red-400" />;
+      default: return <Layers size={20} className="text-gray-400" />;
     }
   };
 
   return (
-    <>
-      <div onClick={() => setIsExpanded(true)}>
-        {children}
-      </div>
-
-      {isExpanded && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => setIsExpanded(false)}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-md w-full max-w-[1040px] max-h-[80vh] overflow-auto"
-            onClick={(e) => e.stopPropagation()}
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <ModalHeader onClose={onClose}>
+        <div className="flex gap-4">
+          <button
+            onClick={() => setActiveTab('visual')}
+            className={`flex items-center gap-2 px-3 py-1 rounded ${
+              activeTab === 'visual' 
+                ? 'bg-gray-700 text-white' 
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
           >
-            <div className="p-4">
-              <div 
-                className="flex flex-wrap items-center gap-4 mb-4 cursor-pointer"
-                onClick={() => setIsExpanded(false)}
-              >
-                <div className="flex items-center gap-2">
-                  <Layers size={16} className="text-gray-500" />
-                  <h3 className="font-medium">Deck Overview</h3>
-                  {isExpanded ? (
-                    <ChevronUp size={16} className="text-gray-500" />
-                  ) : (
-                    <ChevronDown size={16} className="text-gray-500" />
-                  )}
-                </div>
-                <div className="flex gap-4 text-xs">
-                  <div className="flex items-center gap-1">
-                    <Hand size={14} className="text-blue-500" />
-                    <span className="text-blue-600">In Hand ({hand.length})</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Layers size={14} className="text-gray-500" />
-                    <span className="text-gray-600">In Deck ({deck.length})</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Play size={14} className="text-green-500" />
-                    <span className="text-green-600">In Play ({inPlay.length})</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Trash size={14} className="text-red-500" />
-                    <span className="text-red-600">Discarded ({discard.length})</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1 p-4">
-                {sortedCards.map(({ card, zone }, index) => (
-                  <div 
-                    key={`${zone}-${card.id}-${index}`} 
-                    className="relative"
-                  >
-                    {zone === 'discard' ? (
-                      <FaceDownCard className={getCardStyle(zone)} />
-                    ) : (
-                      <CardComponent 
-                        card={card}
-                        className={getCardStyle(zone)}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+            <Layers size={16} />
+            <span>Cards</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('json')}
+            className={`flex items-center gap-2 px-3 py-1 rounded ${
+              activeTab === 'json' 
+                ? 'bg-gray-700 text-white' 
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            <Code size={16} />
+            <span>JSON</span>
+          </button>
         </div>
-      )}
-    </>
+      </ModalHeader>
+
+      <ModalBody>
+        {activeTab === 'visual' ? (
+          <div className="grid grid-cols-1 gap-4">
+            {Object.entries(groupedCards).map(([zone, cards]) => (
+              <div key={zone} className="bg-gray-800 rounded-lg">
+                <button
+                  onClick={() => toggleCategory(zone)}
+                  className="w-full p-4 flex items-center justify-between hover:bg-gray-750 rounded-lg transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    {expandedCategories[zone] ? (
+                      <ChevronDown size={20} className="text-gray-400" />
+                    ) : (
+                      <ChevronRight size={20} className="text-gray-400" />
+                    )}
+                    {getZoneIcon(zone)}
+                    <h3 className="text-lg font-semibold text-gray-100 capitalize">
+                      {zone} ({cards.length})
+                    </h3>
+                  </div>
+                </button>
+
+                {expandedCategories[zone] && (
+                  <div className="p-4 pt-0">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      {cards.map((card) => (
+                        <div key={card.id} className="transform hover:scale-105 transition-transform">
+                          {zone === 'discard' ? (
+                            <FaceDownCard />
+                          ) : (
+                            <CardComponent card={card} />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <pre className="text-gray-300 text-sm font-mono whitespace-pre-wrap">
+            {JSON.stringify({ deck, discard, inPlay, hand }, null, 2)}
+          </pre>
+        )}
+      </ModalBody>
+    </Modal>
   );
 }

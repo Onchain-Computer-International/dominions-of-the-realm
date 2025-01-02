@@ -1,9 +1,9 @@
-import React from 'react';
 import { useGameState } from './Game';
 import { PlayerHand } from './components/PlayerHand';
 import { Supply } from './components/Supply';
 import { GameHeader } from './components/GameHeader';
 import { Toast } from './components/Toast';
+import { GameBoard } from './Map/components/GameBoard';
 
 export default function App() {
   const { 
@@ -18,8 +18,9 @@ export default function App() {
   const player = gameState.players[0];
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-7xl mx-auto p-8 pb-40">
+    <div className="w-screen h-screen fixed top-0 left-0">
+      <GameBoard />
+      <div className="max-w-7xl mx-auto p-8 pb-40 z-10">
         <GameHeader 
           player={player}
           turn={gameState.turn}
