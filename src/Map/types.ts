@@ -1,17 +1,5 @@
-export type TerrainType = 
-  | 'ocean'
-  | 'coast'
-  | 'beach'
-  | 'plains'
-  | 'grassland'
-  | 'hills'
-  | 'mountains'
-  | 'snow'
-  | 'desert'
-  | 'forest'
-  | 'rainforest'
-  | 'tundra'
-  | 'swamp';
+export type TerrainType = 'mountains' | 'hills' | 'plains' | 'desert' | 'rainforest' | 
+                         'forest' | 'tundra' | 'water' | 'deep_water' | 'swamp' | 'woods';
 
 export type BiomeType =
   | 'tropical'
@@ -22,16 +10,23 @@ export type BiomeType =
 
 export interface Territory {
   id: string;
+  coordinates: string;
   x: number;
   y: number;
-  owner: string | null;
-  type: TerrainType;
-  biome: BiomeType;
-  elevation: number;
-  moisture: number;
-  temperature: number;
-  resources: Resources;
-  features: TerrainFeatures;
+  isOwned: boolean;
+  type: string;
+  features: {
+    rivers: boolean;
+    mountains: boolean;
+    forest: boolean;
+  };
+  resources: {
+    gold: number;
+    production: number;
+    food: number;
+    science: number;
+  };
+  card: any; // Replace 'any' with your Card type
 }
 
 export interface Resources {

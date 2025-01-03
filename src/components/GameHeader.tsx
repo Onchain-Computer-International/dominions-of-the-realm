@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Swords, Coins, ShoppingCart, Users, Calendar, Sparkles, Hammer, Heart, Layers, Gauge, Download, Eye } from 'lucide-react';
 import { Player, Season, ActiveEffect } from '../types/game';
 import { getSeasonEmoji, getMonthName } from '../Game';
@@ -104,8 +104,31 @@ export function GameHeader({
   const totalCards = deck.length + discard.length + inPlay.length + hand.length;
   const [territories] = useAtom(mapAtom);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-  const [isDeckModalOpen, setIsDeckModalOpen] = useState(false);
+  const prevCoinsRef = useRef(coins);
+  const coinSound = useRef(new Audio('/sounds/coins.mp3'));
+  const prevPopulationRef = useRef(currentPopulation);
+  const bornSound = useRef(new Audio('/sounds/born.mp3'));
+  const shuffleSound = useRef(new Audio('/sounds/shuffle.mp3'));
   
+  useEffect(() => {
+    if (coins > prevCoinsRef.current) {
+      coinSound.current.play().catch(e => console.error('Error playing coin sound:', e));
+    }
+    prevCoinsRef.current = coins;
+  }, [coins]);
+
+  useEffect(() => {
+    if (currentPopulation > prevPopulationRef.current) {
+      bornSound.current.play().catch(e => console.error('Error playing born sound:', e));
+    }
+    prevPopulationRef.current = currentPopulation;
+  }, [currentPopulation]);
+
+  const handleEndTurn = () => {
+    shuffleSound.current.play().catch(e => console.error('Error playing shuffle sound:', e));
+    onEndTurn();
+  };
+
   return (
     <>
       <div className="fixed top-0 left-0 w-full bg-black/30 backdrop-blur-sm p-3 rounded-lg shadow-md mb-4">
@@ -166,13 +189,18 @@ export function GameHeader({
               <span className="font-medium text-gray-100">View Map Data</span>
             </button>
 
-            <button
-              onClick={() => setIsDeckModalOpen(true)}
-              className="bg-white rounded-full p-2 hover:bg-gray-50 flex items-center gap-2"
-            >
-              <Layers size={20} className="text-gray-500" />
-              <span className="font-medium text-gray-600">Cards: {totalCards}</span>
-            </button>
+            <DeckViewer
+              deck={deck}
+              discard={discard}
+              inPlay={inPlay}
+              hand={hand}
+              children={
+                <button className="bg-white rounded-full p-2 hover:bg-gray-50 flex items-center gap-2">
+                  <Layers size={20} className="text-gray-500" />
+                  <span className="font-medium text-gray-600">Cards: {totalCards}</span>
+                </button>
+              }
+            />
 
             <div className="flex items-center gap-2">
               <motion.div
@@ -211,7 +239,7 @@ export function GameHeader({
               </motion.div>
 
               <motion.button
-                onClick={onEndTurn}
+                onClick={handleEndTurn}
                 whileHover={{ scale: 1.05, backgroundColor: '#2563eb' }}
                 whileTap={{ scale: 0.95 }}
                 className="px-4 py-1 bg-blue-500 text-white text-xs font-medium rounded-md
@@ -228,15 +256,6 @@ export function GameHeader({
         isOpen={isMapModalOpen}
         onClose={() => setIsMapModalOpen(false)}
         territories={territories}
-      />
-
-      <DeckViewer
-        isOpen={isDeckModalOpen}
-        onClose={() => setIsDeckModalOpen(false)}
-        deck={deck}
-        discard={discard}
-        inPlay={inPlay}
-        hand={hand}
       />
     </>
   );

@@ -1,5 +1,7 @@
 import { Card, baseCards } from '../Cards';
 import { noise2d } from './noiseGenerator';
+import { generateFeatures } from './featureGenerator';
+import { generateResources } from './resourceGenerator';
 
 const ELEVATION_SCALE = 0.03;
 const MOISTURE_SCALE = 0.04;
@@ -23,8 +25,14 @@ const TRANSITION_SCALE = 0.08;    // Increased from 0.05 for sharper transitions
 const BIOME_INFLUENCE = 0.6;      // Increased from 0.4 for stronger biome characteristics
 const BIOME_NOISE_OCTAVES = 3;    // Multiple noise layers for more varied regions
 
+// Add new water-related constants
+const WATER_SCALE = 0.006;        // Even larger scale for smoother water features
+const COASTLINE_SCALE = 0.035;    // Reduced for smoother coastlines
+const WATER_SMOOTHING = 0.4;      // Increased smoothing
+const ISLAND_THRESHOLD = 0.92;    // Much higher threshold for island formation
+
 type TerrainType = 'mountains' | 'hills' | 'plains' | 'desert' | 'rainforest' | 
-                   'forest' | 'tundra' | 'river' | 'lake' | 'ocean' | 'swamp' | 'woods';
+                   'forest' | 'tundra' | 'water' | 'deep_water' | 'swamp' | 'woods';
 
 type BiomeType = 'alpine' | 'coastal' | 'temperate' | 'tropical' | 
                  'arid' | 'wetland' | 'tundra' | 'aquatic';
@@ -48,7 +56,7 @@ const biomeDefinitions: Record<BiomeType, BiomeDefinition> = {
     tempMin: 0.0,
     tempMax: 0.4,
     cards: ['copper', 'silver', 'gold', 'mountains'],
-    weight: 0.4  // Rarer due to valuable resources
+    weight: 0.4
   },
   coastal: {
     elevation: 0.3,
@@ -56,8 +64,8 @@ const biomeDefinitions: Record<BiomeType, BiomeDefinition> = {
     moistureMax: 1.0,
     tempMin: 0.3,
     tempMax: 0.7,
-    cards: ['river', 'lake', 'ocean'],
-    weight: 0.7  // Common
+    cards: ['water'],
+    weight: 0.7
   },
   temperate: {
     elevation: 0.5,
@@ -66,7 +74,7 @@ const biomeDefinitions: Record<BiomeType, BiomeDefinition> = {
     tempMin: 0.3,
     tempMax: 0.6,
     cards: ['woods', 'forest', 'hills', 'plains'],
-    weight: 1.0  // Most common
+    weight: 1.0
   },
   tropical: {
     elevation: 0.4,
@@ -75,7 +83,7 @@ const biomeDefinitions: Record<BiomeType, BiomeDefinition> = {
     tempMin: 0.6,
     tempMax: 1.0,
     cards: ['rainforest', 'forest', 'groves'],
-    weight: 0.5  // Moderately rare
+    weight: 0.5
   },
   arid: {
     elevation: 0.5,
@@ -84,7 +92,7 @@ const biomeDefinitions: Record<BiomeType, BiomeDefinition> = {
     tempMin: 0.6,
     tempMax: 1.0,
     cards: ['desert', 'hills', 'plains'],
-    weight: 0.6  // Moderately common
+    weight: 0.6
   },
   wetland: {
     elevation: 0.3,
@@ -92,8 +100,8 @@ const biomeDefinitions: Record<BiomeType, BiomeDefinition> = {
     moistureMax: 1.0,
     tempMin: 0.4,
     tempMax: 0.7,
-    cards: ['swamp', 'river', 'lake'],
-    weight: 0.5  // Moderately rare
+    cards: ['swamp', 'shore', 'water'],
+    weight: 0.5
   },
   tundra: {
     elevation: 0.5,
@@ -102,7 +110,7 @@ const biomeDefinitions: Record<BiomeType, BiomeDefinition> = {
     tempMin: 0.0,
     tempMax: 0.3,
     cards: ['tundra', 'hills', 'plains'],
-    weight: 0.4  // Rarer
+    weight: 0.4
   },
   aquatic: {
     elevation: 0.2,
@@ -110,8 +118,8 @@ const biomeDefinitions: Record<BiomeType, BiomeDefinition> = {
     moistureMax: 1.0,
     tempMin: 0.3,
     tempMax: 0.7,
-    cards: ['ocean', 'lake', 'river'],
-    weight: 0.6  // Moderately common
+    cards: ['water', 'deep_water'],
+    weight: 0.6
   }
 };
 
@@ -240,81 +248,59 @@ function classifyTerrain(elevation: number, moisture: number, temperature: numbe
   type: TerrainType;
   biome: BiomeType;
 } {
-  // Elevation thresholds
-  const DEEP_WATER = 0.25;
-  const SHALLOW_WATER = 0.35;
+  // Adjusted water thresholds for more continuous water bodies
+  const DEEP_WATER = 0.35;    // Increased from 0.25
+  const WATER = 0.42;         // Increased from 0.35
+  const SHORE = 0.45;         // Increased from 0.4
+
+  // Other thresholds remain the same
   const LOWLAND = 0.45;
   const HILLS = 0.65;
   const MOUNTAINS = 0.75;
 
-  // Moisture thresholds
-  const DRY = 0.3;
-  const MODERATE = 0.5;
-  const WET = 0.7;
-
-  // Temperature thresholds
-  const COLD = 0.3;
-  const COOL = 0.4;
-  const WARM = 0.6;
-  const HOT = 0.8;
-
   let type: TerrainType;
   let biome: BiomeType;
 
-  // First determine basic elevation-based terrain
+  // Determine water features first
   if (elevation < DEEP_WATER) {
-    type = 'ocean';
+    type = 'deep_water';
     biome = 'aquatic';
-  } else if (elevation < SHALLOW_WATER) {
-    // Shallow waters can be lakes or coastal areas
-    if (moisture > WET) {
-      type = 'lake';
-      biome = 'aquatic';
-    } else {
-      type = 'river';
-      biome = 'coastal';
-    }
-  } else if (elevation > MOUNTAINS) {
-    type = 'mountains';
-    biome = 'alpine';
-  } else if (elevation > HILLS) {
-    type = 'hills';
-    biome = temperature < COLD ? 'tundra' : 'temperate';
+  } else if (elevation < WATER) {
+    type = 'water';
+    biome = 'aquatic';
+  } else if (elevation < SHORE) {
+    type = 'water';
+    biome = 'coastal';
   } else {
-    // For middle elevations, use moisture and temperature
-    if (moisture > WET) {
-      if (temperature > WARM) {
-        type = 'rainforest';
-        biome = 'tropical';
-      } else if (temperature > COOL) {
-        type = 'forest';
-        biome = 'temperate';
-      } else {
-        type = 'woods';
-        biome = 'temperate';
-      }
-    } else if (moisture > MODERATE) {
-      if (temperature < COLD) {
-        type = 'tundra';
-        biome = 'tundra';
-      } else if (elevation < LOWLAND) {
-        type = 'swamp';
-        biome = 'wetland';
-      } else {
-        type = 'woods';
-        biome = 'temperate';
-      }
-    } else if (moisture < DRY) {
-      if (temperature > HOT) {
-        type = 'desert';
-        biome = 'arid';
+    // Rest of terrain classification remains the same
+    if (elevation > MOUNTAINS) {
+      type = 'mountains';
+      biome = 'alpine';
+    } else if (elevation > HILLS) {
+      type = 'hills';
+      biome = temperature < 0.3 ? 'tundra' : 'temperate';
+    } else {
+      // Existing terrain classification logic...
+      if (moisture > 0.7) {
+        if (temperature > 0.6) {
+          type = 'rainforest';
+          biome = 'tropical';
+        } else {
+          type = 'forest';
+          biome = 'temperate';
+        }
+      } else if (moisture < 0.3) {
+        if (temperature > 0.6) {
+          type = 'desert';
+          biome = 'arid';
+        } else {
+          type = 'plains';
+          biome = 'temperate';
+        }
       } else {
         type = 'plains';
-        biome = 'temperate';
+        biome = temperature < 0.4 ? 'tundra' : 'temperate';
       }
-    } else {
-      type = 'plains';
-      biome = temperature < COOL ? 'tundra' : 'temperate';
     }
   }
 
@@ -424,6 +410,39 @@ function generateTerrain(x: number, y: number, seed: number): {
   const temperature = baseTemperature * (1 - BIOME_INFLUENCE) +
                      (biomeDef.tempMin + tempRange * Math.random()) * BIOME_INFLUENCE;
 
+  // Generate base water features at a larger scale
+  const waterMask = noise2d(x * WATER_SCALE, y * WATER_SCALE, seed + 500);
+  
+  // Generate coastline details
+  const coastDetail = noise2d(x * COASTLINE_SCALE, y * COASTLINE_SCALE, seed + 600);
+  
+  // Smooth transition for water features
+  if (elevation < 0.5) {
+    elevation = elevation * (1 - WATER_SMOOTHING) + waterMask * WATER_SMOOTHING;
+  }
+  
+  // Apply coastline details only near shoreline
+  if (elevation > 0.3 && elevation < 0.6) {
+    elevation += coastDetail * 0.1;
+  }
+  
+  // Expanded island reduction logic
+  if (elevation > 0.4 && elevation < 0.6) {  // Wider range to check for islands
+    const islandNoise = noise2d(x * COASTLINE_SCALE * 2, y * COASTLINE_SCALE * 2, seed + 700);
+    const largeScaleNoise = noise2d(x * WATER_SCALE * 0.5, y * WATER_SCALE * 0.5, seed + 800);
+    
+    // Combine both noise values to make island formation even rarer
+    if (islandNoise < ISLAND_THRESHOLD || largeScaleNoise < 0.4) {
+      elevation = 0.35; // Force deeper water
+    }
+  }
+
+  // Additional smoothing pass for coastal areas
+  if (elevation > 0.3 && elevation < 0.7) {
+    const smoothingNoise = noise2d(x * WATER_SCALE * 1.5, y * WATER_SCALE * 1.5, seed + 900);
+    elevation = elevation * 0.8 + smoothingNoise * 0.2;
+  }
+
   // Use the classifier with biome influence
   const { type } = classifyTerrain(elevation, moisture, temperature);
 
@@ -454,10 +473,10 @@ function getCardForLocation(x: number, y: number, seed: number): Card {
       case 'forest':
       case 'woods':
         return ['woods', 'forest', 'groves'].includes(card.id);
-      case 'river':
-      case 'lake':
-      case 'ocean':
-        return ['river', 'lake', 'ocean'].includes(card.id);
+      case 'deep_water':
+      case 'water':
+      case 'shore':
+        return card.id === terrain.type;  // Match exact water type
       default:
         return card.id === terrain.type;
     }
@@ -484,7 +503,7 @@ function getCardForLocation(x: number, y: number, seed: number): Card {
 
   return {
     ...selectedCard,
-    id: `${selectedCard.id}-${x}-${y}`,
+    uid: `${selectedCard.id}-${x}-${y}`,
     terrain: terrain
   };
 }
@@ -497,14 +516,55 @@ export function generateMap(size: number) {
   for (let q = -size; q <= size; q++) {
     for (let r = -size; r <= size; r++) {
       if (Math.abs(q + r) <= size) {
-        const card = getCardForLocation(q, r, seed);
+        const isCenter = q === 0 && r === 0;
+        const isAdjacent = (
+          (q === 1 && r === -1) ||
+          (q === 1 && r === 0) ||
+          (q === 0 && r === 1) ||
+          (q === -1 && r === 1) ||
+          (q === -1 && r === 0) ||
+          (q === 0 && r === -1)
+        );
+        
+        let card;
+        const terrain = generateTerrain(q, r, seed);
+        
+        if (isCenter || isAdjacent) {
+          // For starter territories, ensure we get a treasure card
+          const biomeDef = biomeDefinitions[terrain.biome];
+          const treasureCards = baseCards.filter(card => 
+            card.type.includes('treasure') && 
+            biomeDef.cards.includes(card.id)
+          );
+          const selectedCard = treasureCards[Math.floor(Math.random() * treasureCards.length)];
+          
+          // Create the card with isOwned flag
+          card = {
+            ...selectedCard,
+            uid: `${selectedCard.id}-${q}-${r}`,
+            terrain: terrain,
+            isOwned: true  // Mark the card as owned
+          };
+        } else {
+          card = {
+            ...getCardForLocation(q, r, seed),
+            isOwned: false
+          };
+        }
+
+        // Replace the features generation with the new function
+        const features = generateFeatures(terrain.type);
+        const resources = generateResources();
         
         territories.push({
           id: idCounter.toString(),
           coordinates: `${q},${r}`,
           x: q,
           y: r,
-          owner: null,
+          isOwned: isCenter || isAdjacent,
+          type: terrain.type,
+          features,
+          resources,
           card
         });
         idCounter++;

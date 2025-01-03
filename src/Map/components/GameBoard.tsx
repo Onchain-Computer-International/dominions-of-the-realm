@@ -97,13 +97,45 @@ interface HexProps {
   territory: Territory;
   isSelected: boolean;
   onClick: () => void;
+  territories: Territory[];
 }
 
-export function Hex({ territory, isSelected, onClick }: HexProps) {
+export function Hex({ territory, isSelected, onClick, territories }: HexProps) {
   const [x, y] = hexToPixel(territory.x, territory.y);
   const points = getHexCorners(x, y);
-  const baseCardId = territory.card.id.split('-')[0];
   const color = territory.card.color;
+
+  // Get the points array for creating individual border segments
+  const cornerPoints = [];
+  for (let i = 0; i < 6; i++) {
+    const angle = (2 * Math.PI * i) / 6;
+    cornerPoints.push([
+      x + HEX_SIZE * Math.cos(angle),
+      y + HEX_SIZE * Math.sin(angle)
+    ]);
+  }
+
+  // Helper function to check if a neighbor is owned
+  const hasOwnedNeighbor = (direction: number) => {
+    const directionToCoord = [
+      [1, 0],   // 0: top-right
+      [0, 1],   // 1: right
+      [-1, 1],  // 2: bottom-right
+      [-1, 0],  // 3: bottom-left
+      [0, -1],  // 4: left
+      [1, -1]   // 5: top-left
+    ];
+    
+    const [dx, dy] = directionToCoord[direction];
+    const neighborX = territory.x + dx;
+    const neighborY = territory.y + dy;
+    
+    return territories.some(t => 
+      t.x === neighborX && 
+      t.y === neighborY && 
+      t.isOwned
+    );
+  };
 
   return (
     <g 
@@ -114,11 +146,43 @@ export function Hex({ territory, isSelected, onClick }: HexProps) {
       <polygon
         points={points}
         fill={`rgb(${color.r}, ${color.g}, ${color.b})`}
-        stroke={isSelected ? '#ffffff' : '#1f2937'}
+        stroke={territory.isOwned ? 'none' : (isSelected ? '#ffffff' : '#1f2937')}
         strokeWidth={isSelected ? 2 : 1}
         className={`transition-all duration-200 ${
           isSelected ? 'brightness-125' : 'hover:brightness-110'
         }`}
+      />
+      {territory.isOwned && (
+        <>
+          <polygon
+            points={points}
+            fill="rgba(128, 0, 128, 0.1)"
+            stroke="none"
+          />
+          {/* Draw individual border segments */}
+          {[0, 1, 2, 3, 4, 5].map(i => {
+            if (!hasOwnedNeighbor(i)) {
+              const start = cornerPoints[i];
+              const end = cornerPoints[(i + 1) % 6];
+              return (
+                <line
+                  key={i}
+                  x1={start[0]}
+                  y1={start[1]}
+                  x2={end[0]}
+                  y2={end[1]}
+                  stroke="purple"
+                  strokeWidth="6"
+                />
+              );
+            }
+            return null;
+          })}
+        </>
+      )}
+      <HexFeatures 
+        territory={territory} 
+        position={[x, y]} 
       />
     </g>
   );
@@ -139,6 +203,21 @@ export function GameBoard() {
     resetView
   } = useMapControls(0.5, 3);
 
+  const CENTER_COORDS = { x: 0, y: 0 }; // Center of the map
+
+  // Add this helper function to get adjacent coordinates
+  const getAdjacentCoords = (x: number, y: number) => {
+    // For hexagonal grid, these are the relative coordinates of adjacent tiles
+    return [
+      [x+1, y], [x+1, y-1],
+      [x, y-1], [x-1, y],
+      [x-1, y+1], [x, y+1]
+    ];
+  };
+
+  // Add new Audio instance at the component level
+  const selectSound = new Audio('/sounds/select.mp3');
+
   useEffect(() => {
     // Check if there's a map in localStorage
     const storedMap = false;//localStorage.getItem('game-map');
@@ -153,13 +232,35 @@ export function GameBoard() {
         console.error('Error parsing stored map:', e);
       }
     }
-    // Only generate new map if we don't have a valid stored map
-    setTerritories(generateMap(BOARD_SIZE));
+    // Generate new map and mark center territory as owned
+    const newMap = generateMap(BOARD_SIZE);
+    
+    // Mark center and adjacent territories as owned
+    newMap.forEach(territory => {
+      // Mark center
+      if (territory.x === CENTER_COORDS.x && territory.y === CENTER_COORDS.y) {
+        territory.isOwned = true;
+      }
+      
+      // Mark adjacent territories
+      const adjacentCoords = getAdjacentCoords(CENTER_COORDS.x, CENTER_COORDS.y);
+      if (adjacentCoords.some(([x, y]) => territory.x === x && territory.y === y)) {
+        territory.isOwned = true;
+      }
+    });
+
+    setTerritories(newMap);
   }, [setTerritories]);
 
   const handleHexClick = useCallback((territory: Territory) => {
     if (!isDragging) {
-      setSelectedTerritory(prev => prev?.id === territory.id ? null : territory);
+      setSelectedTerritory(prev => {
+        // Only play sound when selecting a territory, not deselecting
+        if (prev?.id !== territory.id) {
+          selectSound.play().catch(e => console.error('Error playing sound:', e));
+        }
+        return prev?.id === territory.id ? null : territory;
+      });
     }
   }, [isDragging]);
 
@@ -232,6 +333,7 @@ export function GameBoard() {
             <Hex
               key={territory.id}
               territory={territory}
+              territories={territories}
               isSelected={selectedTerritory?.id === territory.id}
               onClick={() => handleHexClick(territory)}
             />

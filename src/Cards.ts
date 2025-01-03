@@ -41,9 +41,8 @@ const cardColors: Record<string, CardColor> = {
   groves: { r: 0, g: 100, b: 0 },
   
   // Water types
-  river: { r: 65, g: 105, b: 225 },    // Royal blue
-  lake: { r: 30, g: 144, b: 255 },     // Dodger blue
-  ocean: { r: 0, g: 119, b: 190 },     // Deep blue
+  water: { r: 64, g: 164, b: 223 },     // Medium blue
+  deep_water: { r: 0, g: 105, b: 148 }, // Dark blue
 };
 
 const allCards: Card[] = [
@@ -602,40 +601,28 @@ const allCards: Card[] = [
 
   // Water types
   {
-    id: 'river',
-    name: 'River',
+    id: 'water',
+    name: 'Water',
     type: ['treasure'],
-    cost: 4,
+    cost: 5,
     coins: 2,
     workload: 4,
-    rarity: 3,  // Rivers are fairly common
-    lore: 'A flowing river teeming with fish and valuable minerals.',
+    rarity: 5,  // Water is moderately common
+    lore: 'Clear waters teeming with fish and opportunity.',
     description: 'Worth 2 coins. Workload: 4',
-    color: cardColors.river
+    color: cardColors.water
   },
   {
-    id: 'lake',
-    name: 'Lake',
-    type: ['treasure'],
-    cost: 6,
-    coins: 3,
-    workload: 5,
-    rarity: 5,  // Lakes are moderately common
-    lore: 'A pristine lake holding countless treasures beneath its surface.',
-    description: 'Worth 3 coins. Workload: 5',
-    color: cardColors.lake
-  },
-  {
-    id: 'ocean',
-    name: 'Ocean',
+    id: 'deep_water',
+    name: 'Deep Water',
     type: ['treasure'],
     cost: 8,
     coins: 4,
-    workload: 7,
-    rarity: 7,  // Oceans are rarer
-    lore: 'Vast waters hiding untold riches in their depths.',
-    description: 'Worth 4 coins. Workload: 7',
-    color: cardColors.ocean
+    workload: 6,
+    rarity: 8,  // Deep water is rarer
+    lore: 'The mysterious depths hold untold treasures for those brave enough to seek them.',
+    description: 'Worth 4 coins. Workload: 6',
+    color: cardColors.deep_water
   }
 ];
 

@@ -38,7 +38,9 @@ function FaceDownCard({ className = '' }: { className?: string }) {
 
 export function DeckViewer({ isOpen, onClose, deck, discard, inPlay, hand }: DeckViewerProps) {
   const [activeTab, setActiveTab] = useState<TabType>('visual');
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
+    all: true
+  });
   
   const totalCards = deck.length + discard.length + inPlay.length + hand.length;
 
@@ -91,6 +93,17 @@ export function DeckViewer({ isOpen, onClose, deck, discard, inPlay, hand }: Dec
     }, {} as Record<string, CardType[]>);
   }, [sortedCards]);
 
+  const allCards = useMemo(() => {
+    return sortedCards.map(({ card }) => card);
+  }, [sortedCards]);
+
+  const displayGroups = useMemo(() => {
+    return {
+      all: allCards,
+      ...groupedCards
+    };
+  }, [allCards, groupedCards]);
+
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
       ...prev,
@@ -100,6 +113,7 @@ export function DeckViewer({ isOpen, onClose, deck, discard, inPlay, hand }: Dec
 
   const getZoneIcon = (zone: string) => {
     switch (zone) {
+      case 'all': return <Layers size={20} className="text-purple-400" />;
       case 'hand': return <Hand size={20} className="text-blue-400" />;
       case 'play': return <Play size={20} className="text-green-400" />;
       case 'discard': return <Trash size={20} className="text-red-400" />;
@@ -139,7 +153,7 @@ export function DeckViewer({ isOpen, onClose, deck, discard, inPlay, hand }: Dec
       <ModalBody>
         {activeTab === 'visual' ? (
           <div className="grid grid-cols-1 gap-4">
-            {Object.entries(groupedCards).map(([zone, cards]) => (
+            {Object.entries(displayGroups).map(([zone, cards]) => (
               <div key={zone} className="bg-gray-800 rounded-lg">
                 <button
                   onClick={() => toggleCategory(zone)}

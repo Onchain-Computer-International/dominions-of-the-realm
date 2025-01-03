@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { nanoid } from 'nanoid';
 import { Effect } from './types/effects';
 import { GameState, Player, Season } from './types/game';
@@ -6,6 +6,8 @@ import { baseCards } from './Cards';
 import { SEASON_DATA } from './static/Seasons';
 import { shuffleArray } from './utils/UtilityFunctions';
 import { drawCards } from './utils/CardUtils';
+import { getDefaultStore } from 'jotai/vanilla';
+import { mapAtom } from './atoms';
 
 export function processDurationEffect(
   state: GameState,
@@ -231,20 +233,21 @@ export function createPlayer(id: string): Player {
 
 // Deck and card management
 export function createInitialDeck(): Card[] {
-  const copper = baseCards.find(card => card.id === 'copper');
-  const woods = baseCards.find(card => card.id === 'woods');
-  const forest = baseCards.find(card => card.id === 'forest');
   const shack = baseCards.find(card => card.id === 'shack');
   
-  if (!copper || !woods || !forest || !shack) {
+  if (!shack) {
     throw new Error('Required starting cards not found');
   }
 
+  // Get the owned territory cards from the map atom using getDefaultStore
+  const territories = getDefaultStore().get(mapAtom);
+  const ownedTerritoryCards = territories
+    .filter(territory => territory.isOwned)
+    .map(territory => cloneCard(territory.card));
+
   return [
-    cloneCard(copper), cloneCard(copper), cloneCard(copper),
-    cloneCard(woods), cloneCard(woods), cloneCard(woods),
-    cloneCard(forest), cloneCard(forest),
-    cloneCard(shack), cloneCard(shack)
+    ...ownedTerritoryCards,
+    cloneCard(shack), cloneCard(shack)  // Keep the two starting shacks
   ];
 }
 
@@ -347,12 +350,17 @@ function calculateHappinessPenalty(workload: number, population: number): number
 }
 
 export function useGameState() {
-  const [state, setState] = useState<GameState>(createInitialGameState);
+  const [state, setState] = useState<GameState | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  const initializeGame = useCallback(() => {
+    setState(createInitialGameState());
+  }, []);
 
   const actions = useMemo(() => ({
     playCard: (uid: string) => {
       setState(prev => {
+        if (!prev) return prev;
         const player = prev.players[prev.currentPlayer];
         const cardIndex = player.hand.findIndex(card => card.uid === uid);
         const card = player.hand[cardIndex];
@@ -411,6 +419,7 @@ export function useGameState() {
 
     buyCard: (cardId: string) => {
       setState(prev => {
+        if (!prev) return prev;
         const player = prev.players[prev.currentPlayer];
         const supplyPile = prev.supply.get(cardId);
 
@@ -445,6 +454,7 @@ export function useGameState() {
 
     endTurn: () => {
       setState(prev => {
+        if (!prev) return prev;
         // Create a new state object to ensure React detects the change
         const newState = { ...prev };
         
@@ -478,10 +488,11 @@ export function useGameState() {
   }), []);
 
   return {
-    gameState: state,
-    ...actions,
+    gameState: state || createInitialGameState(),
+    ...actions,  // Spread the actions object instead of referencing individual properties
     toastMessage: toast,
-    hideToast: () => setToast(null)
+    hideToast: () => setToast(null),
+    initializeGame
   };
 }
 
